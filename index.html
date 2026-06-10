@@ -67,6 +67,7 @@ header.topbar {
 .brand .badge {
   width:38px; height:38px; flex-shrink:0; border-radius:10px; overflow:hidden;
   display:grid; place-items:center; background:var(--bg-1); border:1px solid var(--line-soft);
+  margin-top:-4px;
 }
 .brand .badge img { width:100%; height:100%; object-fit:contain; }
 .brand .tt { min-width:0; }
@@ -77,9 +78,10 @@ header.topbar {
 #topbarChurch { font-size:15px; font-weight:700; letter-spacing:-.02em; color:var(--gold-soft); white-space:nowrap; max-width:46vw; overflow:hidden; text-overflow:ellipsis; line-height:1.2; }
 #syncChip { font-size:11px; font-weight:700; white-space:nowrap; cursor:pointer; }
 .topbar .gear {
-  width:38px; height:38px; flex-shrink:0; border-radius:10px; background:var(--bg-1); border:1px solid var(--line);
+  width:34px; height:34px; flex-shrink:0; border-radius:10px; background:var(--bg-1); border:1px solid var(--line);
   display:grid; place-items:center; color:var(--ink-soft);
 }
+.topbar .gear svg { width:17px; height:17px; }
 .topbar .gear:active { background:var(--bg-2); }
 
 main.content { padding:14px; max-width:820px; margin:0 auto; }
@@ -143,6 +145,7 @@ table.sx td.dim { color:var(--ink-mute); opacity:.25; }
 table.sx .row-edit { color:var(--indigo-soft); cursor:pointer; }
 table.sx tbody tr:active td { background:var(--bg-2); }
 table.sx .sum th, table.sx .sum td { background:var(--bg-3); font-weight:700; color:var(--ink); }
+table.sx .sum td.aggdesc { color:var(--ink-soft); font-weight:600; font-size:11px; }
 .day-h .d1 { font-size:12px; }
 .day-h .d2 { font-size:11px; color:var(--ink-mute); font-weight:500; }
 
@@ -171,7 +174,8 @@ table.px td.rowlb { background:var(--bg-2); color:var(--gold-soft); font-weight:
 .plan-note .nt { font-size:13px; color:var(--ink-soft); white-space:pre-wrap; }
 
 /* ============ FAB ============ */
-.fab { position:fixed; right:16px; bottom:calc(82px + var(--safe-bot)); z-index:40; width:56px; height:56px; border-radius:16px; background:linear-gradient(180deg,var(--gold-soft),var(--gold-deep)); display:grid; place-items:center; box-shadow:0 8px 24px rgba(255,200,87,.35),0 2px 8px rgba(0,0,0,.3); color:#2A1F0A; }
+.fab { position:fixed; right:16px; bottom:calc(82px + var(--safe-bot)); z-index:40; width:50px; height:50px; border-radius:15px; background:linear-gradient(180deg,var(--gold-soft),var(--gold-deep)); display:grid; place-items:center; box-shadow:0 8px 24px rgba(255,200,87,.35),0 2px 8px rgba(0,0,0,.3); color:#2A1F0A; }
+.fab svg { width:21px; height:21px; }
 .fab:active { transform:scale(.95); }
 
 /* ============ 시트/모달/토스트 ============ */
@@ -396,13 +400,21 @@ function computeSpans(list, keyFn, allowEmpty){
   }
   return out;
 }
-function dailyTotals(list){
+function attStats(list){
   const days = DB.settings.days;
-  return days.map((d,di)=>{
+  const daily = days.map((d,di)=>{
     let on=0, off=0;
     list.forEach(t=>{ const a=t.attend[di]||{}; if(a.on) on++; if(a.off) off++; });
-    return { on, off, total:on+off };
+    return { on, off };
   });
+  let everyDay=0, anyDay=0;
+  list.forEach(t=>{
+    let all = days.length>0, any=false;
+    days.forEach((d,di)=>{ const a=t.attend[di]||{}; const present=!!(a.on||a.off); if(present) any=true; else all=false; });
+    if(all) everyDay++;
+    if(any) anyDay++;
+  });
+  return { daily, everyDay, anyDay };
 }
 
 /* =================================================================
@@ -470,15 +482,16 @@ function renderStatus(){
     body += `</tr>`;
   });
   // 합계
-  const tot = dailyTotals(list);
-  function sumRow(label, key){
-    let r = `<tr class="sum"><td class="col-no"></td><td class="col-name">${label}</td><td></td><td></td><td></td>`;
-    tot.forEach(x=>{ r += `<td colspan="2">${x[key]}</td>`; });
-    return r + `</tr>`;
-  }
-  body += sumRow('온라인 참석','on');
-  body += sumRow('오프라인 참석','off');
-  body += sumRow('전체 참석','total');
+  const st = attStats(list);
+  const nday = days.length*2;
+  // 당일 참석계: 날짜별 온/오프
+  let r1 = `<tr class="sum"><td class="col-no"></td><td class="col-name">당일 참석계</td><td colspan="3" class="aggdesc">온 / 오프</td>`;
+  st.daily.forEach(x=>{ r1 += `<td>${x.on}</td><td>${x.off}</td>`; });
+  body += r1 + `</tr>`;
+  // 전일 참석계: 매일 참석한 인원
+  body += `<tr class="sum"><td class="col-no"></td><td class="col-name">전일 참석계</td><td colspan="3" class="aggdesc">매일 참석</td><td colspan="${nday}">${st.everyDay}명</td></tr>`;
+  // 누적 참석계: 하루라도 참석한 인원
+  body += `<tr class="sum"><td class="col-no"></td><td class="col-name">누적 참석계</td><td colspan="3" class="aggdesc">하루라도 참석</td><td colspan="${nday}">${st.anyDay}명</td></tr>`;
   body += '</tbody>';
 
   return html + `<div class="tbl-scroll"><table class="sx">${head}${body}</table></div>`;
@@ -738,9 +751,14 @@ function buildStatusPrint(){
     days.forEach((d,di)=>{ const a=t.attend[di]||{}; body += `<td>${a.on?'○':''}</td><td>${a.off?'○':''}</td>`; });
     body += `</tr>`;
   });
-  const tot = dailyTotals(list);
-  function sr(label,key){ let r=`<tr><td class="lb" colspan="5">${label}</td>`; tot.forEach(x=> r+=`<td class="sum" colspan="2">${x[key]}</td>`); return r+`</tr>`; }
-  body += sr('온라인 참석','on') + sr('오프라인 참석','off') + sr('전체 참석','total') + '</tbody>';
+  const st = attStats(list);
+  const nday = days.length*2;
+  let r1 = `<tr><td class="lb" colspan="5">당일 참석계 (온/오프)</td>`;
+  st.daily.forEach(x=>{ r1 += `<td class="sum">${x.on}</td><td class="sum">${x.off}</td>`; });
+  body += r1 + `</tr>`;
+  body += `<tr><td class="lb" colspan="5">전일 참석계 (매일 참석)</td><td class="sum" colspan="${nday}">${st.everyDay}</td></tr>`;
+  body += `<tr><td class="lb" colspan="5">누적 참석계 (하루라도 참석)</td><td class="sum" colspan="${nday}">${st.anyDay}</td></tr>`;
+  body += '</tbody>';
   return `<table class="pr"><colgroup>${cols}</colgroup>${head}${body}</table>`;
 }
 function buildPrayPrint(){
@@ -1226,6 +1244,7 @@ function syncLeave(){
 /* =================================================================
  * 초기화 · 서비스워커
  * ================================================================= */
+$$('.tabbar button').forEach(b=> b.onclick = ()=> setTab(b.dataset.tab));
 setTab('status');
 
 window.addEventListener('load', ()=>{ try{ fbInit(); }catch(e){ console.error(e); } });
