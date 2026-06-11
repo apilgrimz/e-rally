@@ -125,7 +125,7 @@ nav.tabbar {
 .legend b { color:var(--ink-soft); font-weight:600; }
 
 /* ============ 전도현황 표 (화면) ============ */
-.tbl-scroll { overflow-x:auto; margin:0 -14px; padding:0 14px 6px; -webkit-overflow-scrolling:touch; }
+.tbl-scroll { overflow:auto; max-height:calc(100vh - 245px); max-height:calc(100dvh - 245px - var(--safe-top) - var(--safe-bot)); margin:0 -14px; padding:0 14px 6px; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
 .tbl-scroll::-webkit-scrollbar { height:7px; }
 .tbl-scroll::-webkit-scrollbar-thumb { background:var(--line); border-radius:3px; }
 table.sx { border-collapse:separate; border-spacing:0; width:max-content; min-width:100%; font-size:13px; }
@@ -150,10 +150,10 @@ table.sx .sum td.aggdesc { color:var(--ink-soft); font-weight:600; font-size:11p
 .day-h .d2 { font-size:11px; color:var(--ink-mute); font-weight:500; }
 
 /* ============ 기도명단 (화면 · 사진 서식 / 한 단) ============ */
-.pl-wrap { border:1px solid var(--line-soft); border-radius:14px; overflow:hidden; }
+.pl-wrap { border:1px solid var(--line-soft); border-radius:14px; overflow:auto; max-height:calc(100vh - 245px); max-height:calc(100dvh - 245px - var(--safe-top) - var(--safe-bot)); -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
 table.pl { border-collapse:collapse; width:100%; font-size:14px; border:2px solid var(--line); }
 table.pl th, table.pl td { border-bottom:1px solid var(--line-soft); border-right:1px solid var(--line-soft); padding:9px 8px; text-align:center; background:var(--bg-1); vertical-align:middle; }
-table.pl thead th { background:var(--bg-2); color:var(--ink-soft); font-weight:600; font-size:12px; }
+table.pl thead th { background:var(--bg-2); color:var(--ink-soft); font-weight:600; font-size:12px; position:sticky; top:0; z-index:3; }
 table.pl td.no { color:var(--ink-mute); font-size:12px; width:40px; }
 table.pl td.zo { color:var(--ink-soft); font-weight:600; width:64px; }
 table.pl td.ld { color:var(--ink-soft); }
@@ -173,6 +173,25 @@ table.pl td.nm.has-note { color:var(--gold-soft); }
 /* 전도현황 이름 메모 표시 */
 table.sx td.col-name .ndot { color:var(--gold); font-size:8px; margin-left:4px; vertical-align:middle; }
 table.sx td.col-name.has-note { color:var(--gold-soft); }
+
+/* ============ 검색 · 구역 필터 ============ */
+.searchbar { display:flex; align-items:center; gap:8px; background:var(--bg-1); border:1px solid var(--line); border-radius:11px; padding:0 12px; margin-bottom:8px; }
+.searchbar svg { width:16px; height:16px; color:var(--ink-mute); flex-shrink:0; }
+.searchbar input { border:none; background:none; padding:10px 0; font-size:15px; border-radius:0; }
+.searchbar input:focus { border:none; background:none; }
+.searchbar .sclr { color:var(--ink-mute); font-size:14px; padding:6px; flex-shrink:0; }
+.zone-scroll { display:flex; gap:6px; overflow-x:auto; margin:0 -14px 10px; padding:0 14px 4px; -webkit-overflow-scrolling:touch; }
+.zone-scroll::-webkit-scrollbar { display:none; }
+.zone-pill { flex-shrink:0; padding:6px 13px; border-radius:999px; background:var(--bg-1); border:1px solid var(--line); font-size:12.5px; color:var(--ink-soft); white-space:nowrap; }
+.zone-pill.active { background:rgba(255,200,87,.14); border-color:var(--gold); color:var(--gold-soft); font-weight:700; }
+
+/* 글자 크게 보기 */
+html.fs-lg body { zoom:1.13; }
+html.fs-xl body { zoom:1.27; }
+html.fs-lg .tbl-scroll, html.fs-lg .pl-wrap { max-height:calc((100dvh - var(--safe-top) - var(--safe-bot))/1.13 - 245px); }
+html.fs-xl .tbl-scroll, html.fs-xl .pl-wrap { max-height:calc((100dvh - var(--safe-top) - var(--safe-bot))/1.27 - 245px); }
+.fs-pills { display:flex; gap:6px; }
+.fs-pills .zone-pill { flex:1; text-align:center; justify-content:center; display:inline-flex; }
 
 /* ============ 집회계획 (화면) — 구분(대분류/세부) + 요일/공통 칸 ============ */
 .plan-head { margin-bottom:8px; }
@@ -238,7 +257,8 @@ table.cmap tbody tr:active td { background:var(--bg-2); }
 .sheet-head button.del { color:var(--rose); }
 .sheet-body { padding:16px; overflow-y:auto; flex:1; -webkit-overflow-scrolling:touch; }
 .toast { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(100px + var(--safe-bot)); z-index:200; background:var(--bg-3); color:var(--ink); padding:11px 18px; border-radius:12px; font-size:13px; font-weight:500; border:1px solid var(--line); box-shadow:var(--shadow); opacity:0; pointer-events:none; transition:opacity .2s,transform .2s; max-width:88vw; text-align:center; }
-.toast.show { opacity:1; transform:translateX(-50%) translateY(-4px); }
+.toast.show { opacity:1; transform:translateX(-50%) translateY(-4px); pointer-events:auto; }
+.toast .tbtn { color:var(--gold); font-weight:700; margin-left:10px; padding:2px 4px; font-size:13px; }
 .modal { position:fixed; inset:0; z-index:150; background:rgba(0,0,0,.7); display:none; align-items:center; justify-content:center; padding:20px; }
 .modal.show { display:flex; }
 .modal .box { background:var(--bg-1); border:1px solid var(--line); border-radius:16px; padding:20px; max-width:360px; width:100%; }
@@ -402,7 +422,7 @@ function freshEvent(title){
     targets:[],
     plan:defaultPlan(),
     chanmap:defaultChan(),
-    roomCode:null,
+    roomCode:null, viewerOnly:false, viewCode:null,
   };
 }
 
@@ -424,6 +444,8 @@ function hydrateEvent(ev){
   ev.plan = migratePlan(ev.plan);
   ev.chanmap = migrateChan(ev.chanmap);
   if(ev.roomCode===undefined) ev.roomCode = null;
+  if(ev.viewerOnly===undefined) ev.viewerOnly = false;
+  if(ev.viewCode===undefined) ev.viewCode = null;
   return ev;
 }
 function loadDB(){
@@ -468,6 +490,35 @@ function sortedTargets(){
 }
 /* 전도현황 명단 = 기도명단에서 '참석' 체크(등록)된 대상자만 */
 function enrolledTargets(){ return sortedTargets().filter(t=> t.enrolled); }
+
+/* ----- 검색·구역 필터 (전도현황·기도명단 공용) ----- */
+let filterQ = '', filterZone = '';
+function applyFilter(items){ // items = [{t, no}]
+  const q = filterQ.trim().toLowerCase();
+  return items.filter(({t})=>{
+    if(filterZone && t.zone!==filterZone) return false;
+    if(!q) return true;
+    return [t.name, t.leader, t.relation, t.zone, t.note].some(v=> String(v||'').toLowerCase().includes(q));
+  });
+}
+function statusVisible(){ return applyFilter(enrolledTargets().map((t,i)=>({t,no:i+1}))); }
+function prayVisible(){ return applyFilter(sortedTargets().map((t,i)=>({t,no:i+1}))); }
+function filterBarHTML(){
+  let h = `<div class="searchbar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+    <input id="searchInput" placeholder="이름·인도자 검색" value="${esc(filterQ)}" autocomplete="off"/>
+    ${filterQ?'<button id="searchClear" class="sclr">✕</button>':''}</div>`;
+  h += `<div class="zone-scroll"><button class="zone-pill ${!filterZone?'active':''}" data-zone="">전체</button>`;
+  DB.settings.zones.forEach(z=>{ h += `<button class="zone-pill ${filterZone===z?'active':''}" data-zone="${esc(z)}">${esc(z)}</button>`; });
+  h += `</div>`;
+  return h;
+}
+
+/* 보기 전용 모드 가드 */
+function canEdit(){
+  if(DB.viewerOnly){ toast('보기 전용으로 참여 중이라 수정할 수 없어요'); return false; }
+  return true;
+}
 
 /* 설정의 기간 → 집회계획 날짜/요일 자동 생성 */
 const WEEK_KO = ['주일','월','화','수','목','금','토'];
@@ -571,7 +622,7 @@ function render(){
   else v.innerHTML = renderPlan();
   bindView();
   const fab = $('#fab');
-  fab.style.display = (currentTab==='status' || currentTab==='pray') ? 'grid' : 'none';
+  fab.style.display = ((currentTab==='status' || currentTab==='pray') && !DB.viewerOnly) ? 'grid' : 'none';
 }
 function refreshTopbar(){
   $('#topbarSub').textContent = DB.meta.title && DB.meta.title!=='전도집회' ? DB.meta.title : (DB.meta.period || '명단 관리');
@@ -580,11 +631,12 @@ function refreshTopbar(){
 
 /* ----- 전도현황 ----- */
 function renderStatus(){
-  const list = enrolledTargets();
+  const all = enrolledTargets();
+  const visible = statusVisible();
   const days = DB.settings.days;
   let html = `
    <div class="view-head">
-     <div class="vt">전도 현황<small>참석 ${list.length}명 · ${days.length}일</small></div>
+     <div class="vt">전도 현황<small>참석 ${all.length}명${(filterQ||filterZone)?` · 표시 ${visible.length}명`:''} · ${days.length}일</small></div>
      <div class="view-actions">
        <button class="btn btn-secondary btn-sm" data-act="photo-status">📷 사진</button>
        <button class="btn btn-secondary btn-sm" data-act="print-status">🖨 인쇄</button>
@@ -592,8 +644,12 @@ function renderStatus(){
    </div>
    <div class="legend"><span>참석 표시: <b>○</b></span><span><b>온</b> 온라인</span><span><b>오프</b> 오프라인</span><span class="muted">날짜 칸을 눌러 체크 · 이름을 누르면 상태 입력</span></div>`;
 
-  if(!list.length){
+  if(!all.length){
     return html + `<div class="empty-state">아직 등록된 대상자가 없습니다.<br><b>기도명단</b>에서 참석을 체크하면 여기에 나타납니다.</div>`;
+  }
+  html += filterBarHTML();
+  if(!visible.length){
+    return html + `<div class="empty-state">검색 결과가 없습니다.</div>`;
   }
 
   let head = `<thead>
@@ -607,10 +663,10 @@ function renderStatus(){
   head += `</tr></thead>`;
 
   let body = '<tbody>';
-  list.forEach((t,idx)=>{
+  visible.forEach(({t,no})=>{
     const noteCls = t.note ? ' has-note' : '';
     body += `<tr data-id="${t.id}">
-      <td class="col-no">${idx+1}</td>
+      <td class="col-no">${no}</td>
       <td class="col-name row-edit${noteCls}" data-status="${t.id}">${esc(t.name)||'<span class="dim">이름</span>'}${t.note?'<span class="ndot">●</span>':''}</td>
       <td class="zo">${esc(t.zone)}</td><td class="ld">${esc(t.leader)}</td><td class="rel">${esc(t.relation)}</td>`;
     days.forEach((d,di)=>{
@@ -620,8 +676,8 @@ function renderStatus(){
     });
     body += `</tr>`;
   });
-  // 합계
-  body += statusSummaryRows(list);
+  // 합계 (현재 표시 중인 명단 기준)
+  body += statusSummaryRows(visible.map(x=>x.t));
   body += '</tbody>';
 
   return html + `<div class="tbl-scroll"><table class="sx">${head}${body}</table></div>`;
@@ -659,13 +715,19 @@ function renderPray(){
   if(!list.length){
     return html + `<div class="empty-state">아직 대상자가 없습니다.<br>오른쪽 아래 <b>＋</b> 버튼으로 추가하세요.</div>`;
   }
+  html += filterBarHTML();
+  const visible = prayVisible();
+  if(!visible.length){
+    return html + `<div class="empty-state">검색 결과가 없습니다.</div>`;
+  }
   html += `<div class="pray-toolbar"><span class="muted">참석 칸을 체크하면 <b>전도현황</b> 명단에 등록됩니다.</span></div>`;
-  const zoneSpans = computeSpans(list, t=>t.zone);
-  const leaderSpans = computeSpans(list, t=> t.zone+'||'+t.leader);
+  const vts = visible.map(x=>x.t);
+  const zoneSpans = computeSpans(vts, t=>t.zone);
+  const leaderSpans = computeSpans(vts, t=> t.zone+'||'+t.leader);
   let h = `<div class="pl-wrap"><table class="pl">
     <thead><tr><th>번호</th><th>구역</th><th>인도자</th><th>관계</th><th>대상자</th><th>참석</th></tr></thead><tbody>`;
-  list.forEach((t,idx)=>{
-    h += `<tr data-edit="${t.id}"><td class="no">${idx+1}</td>`;
+  visible.forEach(({t,no},idx)=>{
+    h += `<tr data-edit="${t.id}"><td class="no">${no}</td>`;
     if(zoneSpans[idx]>0) h += `<td class="zo" rowspan="${zoneSpans[idx]}">${esc(t.zone)}</td>`;
     if(leaderSpans[idx]>0) h += `<td class="ld" rowspan="${leaderSpans[idx]}">${esc(t.leader)}</td>`;
     h += `<td class="rel">${esc(t.relation)}</td><td class="nm${t.note?' has-note':''}" data-status="${t.id}">${esc(t.name)||'<span class="dim">이름</span>'}${t.note?'<span class="ndot">●</span>':''}</td>`;
@@ -692,8 +754,15 @@ function planCell(v){
 function buildPlanGrid(forPrint){
   const p = DB.plan;
   if(!p.rows.length || !p.dayLabels.length) return '';
+  // 내용이 전혀 없는 빈 행은 화면·사진·인쇄에서 제외 (편집에서는 그대로 보임)
+  const rows = p.rows.filter(r=>{
+    if((r.cat||'').trim() || (r.label||'').trim()) return true;
+    if(r.mode==='merged') return !!String(r.value||'').trim();
+    return (r.cells||[]).some(c=> String(c||'').trim());
+  });
+  if(!rows.length) return '';
   const nd = p.dayLabels.length;
-  const catSpans = computeSpans(p.rows, r=> r.cat||'');
+  const catSpans = computeSpans(rows, r=> r.cat||'');
   const T = forPrint ? { tbl:'pr', cat:'lb', lbl:'lb', lbl2:'lb', cell:'', mv:'mv' }
                      : { tbl:'ptbl', cat:'cat', lbl:'lbl', lbl2:'lbl2', cell:'cell', mv:'mval' };
   let cols = '';
@@ -705,7 +774,7 @@ function buildPlanGrid(forPrint){
   p.dayLabels.forEach(d=> head += `<th>${esc(d)}</th>`);
   head += `</tr></thead>`;
   let body = '<tbody>';
-  p.rows.forEach((r,i)=>{
+  rows.forEach((r,i)=>{
     body += `<tr${forPrint?'':` data-prow="${i}"`}>`;
     if(r.cat){
       if(catSpans[i]>0) body += `<td class="${T.cat}" rowspan="${catSpans[i]}">${esc(r.cat)}</td>`;
@@ -754,6 +823,18 @@ function renderPlan(){
  * ================================================================= */
 function bindView(){
   $$('[data-act]').forEach(b=> b.onclick = ()=> handleAct(b.dataset.act));
+  // 검색·구역 필터
+  const si = $('#searchInput');
+  if(si){
+    si.oninput = ()=>{
+      filterQ = si.value;
+      rerenderPreserve();
+      const s2 = $('#searchInput');
+      if(s2){ s2.focus(); const L=s2.value.length; try{ s2.setSelectionRange(L,L); }catch(e){} }
+    };
+  }
+  const sc = $('#searchClear'); if(sc) sc.onclick = ()=>{ filterQ=''; rerenderPreserve(); };
+  $$('.zone-pill').forEach(p=> p.onclick = ()=>{ filterZone = p.dataset.zone || ''; rerenderPreserve(); });
   // 전도현황 셀 토글
   $$('#view td.tap').forEach(td=> td.onclick = ()=> toggleAttend(td.dataset.tap, +td.dataset.day, td.dataset.mode));
   // 이름 탭 → 상태/메모 팝업 (전도현황·기도명단 공통)
@@ -802,7 +883,7 @@ function rerenderPreserve(){
 /* 전도현황 합계행만 다시 계산해 교체 (표 스크롤 유지) */
 function refreshStatusSummary(){
   if(!$('#view table.sx tbody')) return;
-  const st = attStats(enrolledTargets());
+  const st = attStats(statusVisible().map(x=>x.t));
   const set = (k,v)=>{ const el = document.querySelector(`#view table.sx td[data-sum="${k}"]`); if(el) el.textContent = v; };
   st.daily.forEach((x,di)=>{ set('on'+di, x.on); set('off'+di, x.off); });
   st.everyThrough.forEach((v,di)=> set('ev'+di, v));
@@ -811,6 +892,7 @@ function refreshStatusSummary(){
 
 /* 대상자 토글 — 해당 칸만 제자리 갱신 (스크롤 위치 그대로) */
 function toggleAttend(id, dayIdx, mode){
+  if(!canEdit()) return;
   const t = DB.targets.find(x=>x.id===id); if(!t) return;
   if(!t.attend[dayIdx]) t.attend[dayIdx] = {};
   t.attend[dayIdx][mode] = !t.attend[dayIdx][mode];
@@ -829,6 +911,7 @@ function toggleAttend(id, dayIdx, mode){
 
 /* 기도명단 참석 체크 → 전도현황 등록 토글 (해당 칸만 갱신) */
 function togglePrayAttend(id){
+  if(!canEdit()) return;
   const t = DB.targets.find(x=>x.id===id); if(!t) return;
   t.enrolled = !t.enrolled;
   if(t.enrolled) t.attend = {}; // 새로 등록되면 빈 출석으로 시작 (이전 기록 잔재 제거)
@@ -847,6 +930,7 @@ function togglePrayAttend(id){
 
 /* 전도현황: 이름 탭 → 상태(메모) 팝업 */
 function openStatusPopup(t){
+  if(!canEdit()) return;
   const body = `
     <div class="field"><label>${esc(t.name)||'대상자'} · 상태 / 메모</label>
       <textarea id="st-note" rows="5" placeholder="기도제목, 상담 내용, 특이사항 등을 적어 주세요" autofocus>${esc(t.note)}</textarea></div>
@@ -911,6 +995,7 @@ $('#sheetBackdrop').onclick = ()=> closeSheet();
 $('#sheetSave').onclick = ()=>{ if(sheetCtx && sheetCtx.save) sheetCtx.save(); };
 
 function openTargetSheet(target, isNew){
+  if(!canEdit()) return;
   const t = target;
   const zoneOpts = DB.settings.zones.map(z=> `<option value="${esc(z)}" ${z===t.zone?'selected':''}>${esc(z)}</option>`).join('');
   const body = `
@@ -937,8 +1022,16 @@ function openTargetSheet(target, isNew){
   });
   if(!isNew){
     $('#f-del').onclick = ()=> confirmModal('대상자 삭제', `'${t.name||'이 대상자'}'을(를) 삭제할까요?`, ()=>{
+      const idx = DB.targets.findIndex(x=>x.id===t.id);
+      const removed = idx>=0 ? DB.targets[idx] : null;
       DB.targets = DB.targets.filter(x=>x.id!==t.id);
-      saveDB(); closeSheet(); render(); toast('삭제되었습니다');
+      saveDB(); closeSheet(); render();
+      if(removed){
+        toastAction(`'${removed.name||'대상자'}' 삭제됨`, '되돌리기', ()=>{
+          DB.targets.splice(Math.min(idx, DB.targets.length), 0, removed);
+          saveDB(); render(); toast('복구되었습니다');
+        });
+      } else toast('삭제되었습니다');
     });
   }
 }
@@ -951,6 +1044,7 @@ $('#fab').onclick = ()=>{
  * 집회계획 편집 시트
  * ================================================================= */
 function openPlanSheet(){
+  if(!canEdit()) return;
   const p = JSON.parse(JSON.stringify(DB.plan));
   if(p.schema!==2) Object.assign(p, defaultPlan());
   p.topNotes = p.topNotes||[]; p.dayLabels = p.dayLabels||[]; p.rows = p.rows||[];
@@ -1019,6 +1113,7 @@ function openPlanSheet(){
 
 /* ----- 성찬위원 배치도 편집기 ----- */
 function openChanSheet(){
+  if(!canEdit()) return;
   const c = JSON.parse(JSON.stringify(DB.chanmap));
   if(c.schema!==1) Object.assign(c, defaultChan());
   c.divisions=c.divisions||[]; c.roles=c.roles||[]; c.fixed=c.fixed||[]; c.notes=c.notes||[];
@@ -1384,6 +1479,7 @@ function toggleEvDropdown(){
 }
 function switchEvent(id){
   const ev = VAULT.events.find(e=>e.id===id); if(!ev) return;
+  filterQ=''; filterZone='';
   DB = hydrateEvent(ev); VAULT.activeId = id; saveVault();
   syncAttachActive();
   setTab(currentTab);
@@ -1427,7 +1523,24 @@ document.addEventListener('click', (e)=>{
  * ================================================================= */
 function openSettingsSheet(){
   const m = DB.meta;
-  const linked = !!DB.roomCode;
+  // 보기 전용 참여 중이면 축소된 설정만 표시
+  if(DB.viewerOnly){
+    const body = `
+      <div class="muted" style="margin-bottom:10px">보기 전용으로 참여 중입니다. 집회 정보·명단은 공유한 분만 수정할 수 있어요.</div>
+      <div class="section-title">실시간 공유</div>
+      <div id="sync-box"></div>
+      <div class="section-title">화면 글자 크기</div>
+      <div class="fs-pills" id="fs-pills"></div>
+      <div class="section-title">내보내기</div>
+      <div class="list-row"><div class="lr-main"><div class="t">엑셀(CSV) 내보내기</div><div class="d">명단·출석을 엑셀 파일로 저장</div></div><button class="btn btn-secondary btn-sm" id="s-csv">저장</button></div>
+      <div class="section-title">앱 공유하기</div>
+      <div class="list-row"><div class="lr-main"><div class="t">빈 앱 공유</div><div class="d">데이터 없이 앱만 다른 사람에게 공유</div></div><button class="btn btn-secondary btn-sm" id="s-shareapp">공유</button></div>`;
+    openSheet('설정', body, null);
+    renderSyncBox(); renderFsPills();
+    $('#s-csv').onclick = exportCSV;
+    $('#s-shareapp').onclick = shareApp;
+    return;
+  }
   let body = `
     <div class="section-title">집회 정보</div>
     <div class="field"><label>교회 이름 (우상단 표시)</label><input id="s-church" value="${esc(m.churchName)}" placeholder="예) 부산중부교회"/></div>
@@ -1448,9 +1561,13 @@ function openSettingsSheet(){
     <div class="section-title">실시간 공유 (여러 기기에서 함께 보기)</div>
     <div id="sync-box"></div>
 
-    <div class="section-title">백업</div>
+    <div class="section-title">백업 · 내보내기</div>
+    <div class="list-row"><div class="lr-main"><div class="t">엑셀(CSV) 내보내기</div><div class="d">명단·출석·메모를 엑셀 파일로 저장</div></div><button class="btn btn-secondary btn-sm" id="s-csv">저장</button></div>
     <div class="list-row"><div class="lr-main"><div class="t">데이터 내보내기</div><div class="d">현재 집회를 JSON 파일로 저장</div></div><button class="btn btn-secondary btn-sm" id="s-export">내보내기</button></div>
     <div class="list-row"><div class="lr-main"><div class="t">데이터 가져오기</div><div class="d">JSON 파일에서 불러오기</div></div><button class="btn btn-secondary btn-sm" id="s-import">가져오기</button></div>
+
+    <div class="section-title">화면 글자 크기</div>
+    <div class="fs-pills" id="fs-pills"></div>
 
     <div class="section-title">앱 공유하기</div>
     <div class="list-row"><div class="lr-main"><div class="t">빈 앱 공유</div><div class="d">데이터 없이 앱만 다른 사람에게 공유</div></div><button class="btn btn-secondary btn-sm" id="s-shareapp">공유</button></div>
@@ -1471,12 +1588,30 @@ function openSettingsSheet(){
     }
     saveDB(); closeSheet(); render(); toast('설정이 저장됐어요'+dateMsg);
   });
-  renderZoneTags(); renderDayList(); renderSyncBox();
+  renderZoneTags(); renderDayList(); renderSyncBox(); renderFsPills();
   $('#zone-add').onclick = ()=>{ const v=$('#zone-new').value.trim(); if(v && !DB.settings.zones.includes(v)){ DB.settings.zones.push(v); saveDB(); } $('#zone-new').value=''; renderZoneTags(); };
   $('#day-add').onclick = ()=>{ const v=$('#day-new').value.trim(); if(v){ DB.settings.days.push({label:v}); saveDB(); } $('#day-new').value=''; renderDayList(); };
   $('#s-export').onclick = exportJSON;
+  $('#s-csv').onclick = exportCSV;
   $('#s-import').onclick = ()=> $('#jsonInput').click();
   $('#s-shareapp').onclick = shareApp;
+}
+/* 화면 글자 크기 (기기별 저장) */
+function getFontScale(){ try{ return localStorage.getItem('ev-fontscale')||'1'; }catch(e){ return '1'; } }
+function applyFontScale(){
+  const v = getFontScale();
+  document.documentElement.classList.toggle('fs-lg', v==='2');
+  document.documentElement.classList.toggle('fs-xl', v==='3');
+}
+function renderFsPills(){
+  const box = $('#fs-pills'); if(!box) return;
+  const cur = getFontScale();
+  const opts = [['1','보통'],['2','크게'],['3','아주 크게']];
+  box.innerHTML = opts.map(([v,l])=> `<button class="zone-pill ${cur===v?'active':''}" data-fs="${v}">${l}</button>`).join('');
+  $$('#fs-pills [data-fs]').forEach(b=> b.onclick = ()=>{
+    try{ localStorage.setItem('ev-fontscale', b.dataset.fs); }catch(e){}
+    applyFontScale(); renderFsPills();
+  });
 }
 function renderZoneTags(){
   const box = $('#zone-tags'); if(!box) return;
@@ -1494,13 +1629,26 @@ function renderDayList(){
 }
 function renderSyncBox(){
   const box = $('#sync-box'); if(!box) return;
-  if(DB.roomCode){
+  if(DB.roomCode && DB.viewerOnly){
     box.innerHTML = `
-      <div class="list-row"><div class="lr-main"><div class="t">공유 코드</div><div class="d" style="font-size:16px;font-weight:800;letter-spacing:1px;color:var(--gold-soft)">${esc(DB.roomCode)}</div></div>
+      <div class="list-row"><div class="lr-main"><div class="t">보기 전용으로 참여 중</div><div class="d">수정은 할 수 없고, 변경 사항이 실시간으로 표시됩니다.</div></div></div>
+      <button class="btn btn-danger btn-block" id="sy-leave" style="margin-top:8px">공유 중단</button>`;
+    $('#sy-leave').onclick = ()=> confirmModal('공유 중단','보기 전용 참여를 중단할까요?', ()=>{ syncLeave(); renderSyncBox(); });
+  }else if(DB.roomCode){
+    const vrow = DB.viewCode
+      ? `<div class="list-row"><div class="lr-main"><div class="t">보기 전용 코드</div><div class="d" style="font-size:15px;font-weight:800;letter-spacing:1px;color:var(--indigo-soft)">${esc(DB.viewCode)}</div></div>
+         <button class="btn btn-secondary btn-sm" id="sy-vcopy">복사</button></div>
+         <div class="muted">이 코드로 참여하면 <b>보기만</b> 가능합니다 (담임목사님·임원 공유용).</div>`
+      : `<div class="list-row"><div class="lr-main"><div class="t">보기 전용 코드</div><div class="d">보기만 가능한 코드를 따로 만들 수 있어요.</div></div>
+         <button class="btn btn-secondary btn-sm" id="sy-vmake">만들기</button></div>`;
+    box.innerHTML = `
+      <div class="list-row"><div class="lr-main"><div class="t">공유 코드 (편집 가능)</div><div class="d" style="font-size:16px;font-weight:800;letter-spacing:1px;color:var(--gold-soft)">${esc(DB.roomCode)}</div></div>
       <button class="btn btn-secondary btn-sm" id="sy-copy">복사</button></div>
-      <div class="muted">다른 기기에서 "코드로 참여"에 이 코드를 입력하면 실시간으로 함께 편집돼요.</div>
+      ${vrow}
       <button class="btn btn-danger btn-block" id="sy-leave" style="margin-top:8px">공유 중단</button>`;
     $('#sy-copy').onclick = ()=>{ navigator.clipboard && navigator.clipboard.writeText(DB.roomCode); toast('코드를 복사했어요'); };
+    const vc=$('#sy-vcopy'); if(vc) vc.onclick = ()=>{ navigator.clipboard && navigator.clipboard.writeText(DB.viewCode); toast('보기 코드를 복사했어요'); };
+    const vm=$('#sy-vmake'); if(vm) vm.onclick = createViewCode;
     $('#sy-leave').onclick = ()=> confirmModal('공유 중단','이 기기에서 공유를 중단할까요? (데이터는 기기에 그대로 남습니다)', ()=>{ syncLeave(); renderSyncBox(); });
   }else{
     box.innerHTML = `
@@ -1514,6 +1662,32 @@ function renderSyncBox(){
   }
 }
 $('#gearBtn').onclick = openSettingsSheet;
+
+/* CSV(엑셀) 내보내기 — 전체 명단 + 출석 + 메모 */
+function csvCell(v){
+  v = String(v==null?'':v);
+  return /[",\n\r]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v;
+}
+function exportCSV(){
+  const days = DB.settings.days;
+  const rows = [];
+  const head = ['번호','구역','인도자','관계','대상자','참석등록'];
+  days.forEach(d=>{ head.push(d.label+'(온)', d.label+'(오프)'); });
+  head.push('메모');
+  rows.push(head);
+  sortedTargets().forEach((t,i)=>{
+    const r = [i+1, t.zone||'', t.leader||'', t.relation||'', t.name||'', t.enrolled?'O':''];
+    days.forEach((d,di)=>{ const a=t.attend[di]||{}; r.push(a.on?'O':'', a.off?'O':''); });
+    r.push(t.note||'');
+    rows.push(r);
+  });
+  const csv = '\uFEFF' + rows.map(r=> r.map(csvCell).join(',')).join('\r\n');
+  const blob = new Blob([csv], { type:'text/csv;charset=utf-8' });
+  const fname = `${(DB.meta.title||'전도집회').replace(/\s+/g,'_')}_명단_${new Date().toISOString().slice(0,10)}.csv`;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=fname; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  toast('CSV 파일을 저장했어요 (엑셀에서 열림)');
+}
 
 /* JSON 백업 */
 function exportJSON(){
@@ -1546,6 +1720,14 @@ let toastTimer = null;
 function toast(msg){
   const t = $('#toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(toastTimer); toastTimer = setTimeout(()=> t.classList.remove('show'), 2200);
+}
+/* 버튼이 있는 토스트 (예: 삭제 되돌리기) */
+function toastAction(msg, btnLabel, onClick){
+  const t = $('#toast');
+  t.innerHTML = esc(msg) + `<button class="tbtn" id="toastBtn">${esc(btnLabel)}</button>`;
+  t.classList.add('show');
+  $('#toastBtn').onclick = ()=>{ t.classList.remove('show'); onClick(); };
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=> t.classList.remove('show'), 6000);
 }
 let modalOk = null, modalOpen = false;
 function _hideModal(){ $('#modal').classList.remove('show'); modalOpen=false; }
@@ -1603,7 +1785,7 @@ function stableStr(o){
   if(Array.isArray(o)) return '['+o.map(stableStr).join(',')+']';
   return '{'+Object.keys(o).sort().map(k=> JSON.stringify(k)+':'+stableStr(o[k])).join(',')+'}';
 }
-function roomDocOf(ev){ return { app:'ev', meta:ev.meta||{}, settings:ev.settings||{}, plan:ev.plan||{}, chanmap:ev.chanmap||{} }; }
+function roomDocOf(ev){ return { app:'ev', meta:ev.meta||{}, settings:ev.settings||{}, plan:ev.plan||{}, chanmap:ev.chanmap||{}, viewCode:ev.viewCode||null }; }
 function snapOf(ev){
   const t={}; (ev.targets||[]).forEach(x=>{ if(x&&x.id!=null) t[String(x.id)]=stableStr(x); });
   return { doc:stableStr(roomDocOf(ev)), targets:t };
@@ -1639,7 +1821,7 @@ function onRoomDoc(doc){
   const data = doc.data()||{};
   if(data.app && data.app!=='ev') return; // 다른 앱의 방 코드면 무시
   // 내 기기에서 방금 저장한 내용의 반향(echo)이면 화면을 다시 그리지 않음 (스크롤 유지)
-  const incoming = stableStr({ app:'ev', meta:data.meta||{}, settings:data.settings||{}, plan:data.plan||{}, chanmap:data.chanmap||{} });
+  const incoming = stableStr({ app:'ev', meta:data.meta||{}, settings:data.settings||{}, plan:data.plan||{}, chanmap:data.chanmap||{}, viewCode:data.viewCode||null });
   if(!sync.firstSnap.doc && sync.mirror && sync.mirror.doc === incoming){
     setSyncStatus(navigator.onLine?'live':'offline'); return;
   }
@@ -1650,11 +1832,13 @@ function onRoomDoc(doc){
     if(data.settings) DB.settings = Object.assign({}, data.settings);
     if(data.plan) DB.plan = Object.assign({}, data.plan);
     if(data.chanmap) DB.chanmap = Object.assign({}, data.chanmap);
+    if(data.viewCode!==undefined && !DB.viewerOnly) DB.viewCode = data.viewCode;
   }else{
     if(data.meta) DB.meta = Object.assign({}, DB.meta, data.meta);
     if(data.settings) DB.settings = data.settings;
     if(data.plan) DB.plan = data.plan;
     if(data.chanmap) DB.chanmap = data.chanmap;
+    if(data.viewCode!==undefined && !DB.viewerOnly) DB.viewCode = data.viewCode;
   }
   hydrateEvent(DB);
   if(sync.mirror) sync.mirror.doc = stableStr(roomDocOf(DB));
@@ -1694,6 +1878,7 @@ function onTargetsSnap(qs){
 
 function syncPushIfLinked(){
   if(!fb.ready || !DB || !DB.roomCode) return;
+  if(DB.viewerOnly) return;
   if(sync.applyingRemote) return;
   if(sync.code!==DB.roomCode) return;
   clearTimeout(sync.pushTimer);
@@ -1747,24 +1932,47 @@ async function syncJoin(code){
   if(!ensureReady()) return;
   setSyncStatus('connecting'); toast('참여하는 중…');
   try{
-    const doc = await roomRef(code).get();
+    let doc = await roomRef(code).get();
     if(!doc.exists){ toast('해당 코드의 방을 찾을 수 없어요'); return; }
-    const data = doc.data()||{};
+    let data = doc.data()||{};
     if(data.app && data.app!=='ev'){ toast('이 코드는 전도집회 방이 아니에요'); return; }
+    let viewer = false;
+    if(data.view===true && data.target){
+      // 보기 전용 코드 → 원본 방으로 연결
+      viewer = true;
+      const real = String(data.target);
+      doc = await roomRef(real).get();
+      if(!doc.exists){ toast('원본 방을 찾을 수 없어요'); return; }
+      data = doc.data()||{};
+      code = real;
+    }
     DB.roomCode = code;
+    DB.viewerOnly = viewer;
     if(data.meta) DB.meta = Object.assign({}, data.meta);
     if(data.settings) DB.settings = data.settings;
     if(data.plan) DB.plan = data.plan;
     if(data.chanmap) DB.chanmap = data.chanmap;
+    if(!viewer && data.viewCode!==undefined) DB.viewCode = data.viewCode;
     const ts = await tgtRef(code).get();
     DB.targets = ts.docs.map(d=>{ const o=d.data()||{}; o.id=o.id||d.id; return o; });
-    hydrateEvent(DB); sync.mirror = snapOf(DB); saveVault();
+    hydrateEvent(DB); DB.viewerOnly = viewer; sync.mirror = snapOf(DB); saveVault();
     syncAttachActive(); closeSheet(); setTab('status');
-    toast('참여 완료 · 실시간 동기화 중');
+    toast(viewer ? '보기 전용으로 참여했어요' : '참여 완료 · 실시간 동기화 중');
   }catch(e){ console.error(e); toast('참여 실패 — 인터넷/권한을 확인하세요'); }
 }
+/* 보기 전용 코드 만들기 (편집 코드 소유자만) */
+async function createViewCode(){
+  if(!ensureReady() || !DB.roomCode || DB.viewerOnly) return;
+  const v = genRoomCode();
+  toast('보기 코드를 만드는 중…');
+  try{
+    await roomRef(v).set({ app:'ev', view:true, target:DB.roomCode, createdAt:Date.now() });
+    DB.viewCode = v; saveDB(); renderSyncBox();
+    toast('보기 전용 코드: '+v);
+  }catch(e){ console.error(e); toast('보기 코드 생성 실패'); }
+}
 function syncLeave(){
-  syncDetach(); DB.roomCode = null; saveVault(); setSyncStatus('off');
+  syncDetach(); DB.roomCode = null; DB.viewerOnly = false; saveVault(); setSyncStatus('off');
   toast('공유를 중단했어요');
 }
 
@@ -1772,6 +1980,7 @@ function syncLeave(){
  * 초기화 · 서비스워커
  * ================================================================= */
 $$('.tabbar button').forEach(b=> b.onclick = ()=> setTab(b.dataset.tab));
+applyFontScale();
 setTab('status');
 
 window.addEventListener('load', ()=>{ try{ fbInit(); }catch(e){ console.error(e); } });
