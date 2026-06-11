@@ -419,7 +419,7 @@ function hydrateEvent(ev){
   ev.targets = Array.isArray(ev.targets) ? ev.targets : [];
   ev.targets.forEach(t=>{
     if(!t.attend) t.attend = {};
-    if(t.enrolled===undefined) t.enrolled = Object.keys(t.attend).some(k=>{ const a=t.attend[k]||{}; return a.on||a.off; });
+    if(t.enrolled===undefined) t.enrolled = false;
   });
   ev.plan = migratePlan(ev.plan);
   ev.chanmap = migrateChan(ev.chanmap);
@@ -735,7 +735,7 @@ function renderPlan(){
      </div>
    </div>`;
   const planTitle = [DB.meta.churchName, DB.meta.title].filter(Boolean).join(' ') || '집회 계획';
-  const planSub = [DB.meta.period, DB.meta.pastor?('강사 '+DB.meta.pastor):''].filter(Boolean).join(' · ');
+  const planSub = [DB.meta.period, DB.meta.pastor||''].filter(Boolean).join(' · ');
   html += `<div class="plan-head"><div class="pt">${esc(planTitle)}</div>${planSub?`<div class="ps">${esc(planSub)}</div>`:''}</div>`;
   if(p.topNotes && p.topNotes.length && p.topNotes.some(n=>n)){
     html += `<div class="plan-notes">`;
@@ -831,6 +831,7 @@ function toggleAttend(id, dayIdx, mode){
 function togglePrayAttend(id){
   const t = DB.targets.find(x=>x.id===id); if(!t) return;
   t.enrolled = !t.enrolled;
+  if(t.enrolled) t.attend = {}; // 새로 등록되면 빈 출석으로 시작 (이전 기록 잔재 제거)
   saveDB();
   const cell = document.querySelector(`#view td.chk[data-attendchk="${id}"]`);
   if(cell){
@@ -1086,11 +1087,11 @@ function openChanSheet(){
 /* =================================================================
  * 인쇄 / 사진 출력  (공통 표 빌더 — 흑백 A4)
  * ================================================================= */
-/* 인쇄/사진 공통 제목: 교회 이름 + 집회 이름 */
+/* 인쇄/사진 공통 제목: 교회 이름 + 집회 이름 / 부제: 문서명 · 기간 · 강사이름 */
 function prTitle(docType, extra){
   const name = [esc(DB.meta.churchName||''), esc(DB.meta.title||'')].filter(Boolean).join(' ');
   let h = `<div class="pr-title">${name||esc(docType||'')}</div>`;
-  const subParts = [docType, DB.meta.period, extra].filter(Boolean).map(esc);
+  const subParts = [docType, DB.meta.period, DB.meta.pastor, extra].filter(Boolean).map(esc);
   if(subParts.length) h += `<div class="pr-sub">${subParts.join('&nbsp;&nbsp;·&nbsp;&nbsp;')}</div>`;
   h += `<div class="pr-rule"></div>`;
   return h;
@@ -1156,10 +1157,15 @@ function buildPlanPrint(){
   const p = DB.plan;
   const name = [esc(DB.meta.churchName||''), esc(DB.meta.title||'')].filter(Boolean).join(' ');
   let h = `<div class="pr-title">${name||'집회 계획'}</div>`;
-  const sub = [esc(DB.meta.period||''), DB.meta.pastor?('강사 '+esc(DB.meta.pastor)):''].filter(Boolean).join('&nbsp;&nbsp;·&nbsp;&nbsp;');
+  const sub = [esc(DB.meta.period||''), esc(DB.meta.pastor||'')].filter(Boolean).join('&nbsp;&nbsp;·&nbsp;&nbsp;');
   if(sub) h += `<div class="pr-sub">${sub}</div>`;
   h += `<div class="pr-rule"></div>`;
-  (p.topNotes||[]).forEach(n=>{ if(n) h += `<div class="pr-note">${esc(n)}</div>`; });
+  const tnotes = (p.topNotes||[]).filter(Boolean);
+  if(tnotes.length){
+    h += `<div class="pr-notes">`;
+    tnotes.forEach(n=>{ h += `<div class="pr-note">${esc(n)}</div>`; });
+    h += `</div>`;
+  }
   h += buildPlanGrid(true);
   return h;
 }
@@ -1177,7 +1183,10 @@ function buildChanGrid(forPrint){
   const T = forPrint ? { tbl:'pr', lb:'lb', cell:'', fx:'' } : { tbl:'cmap', lb:'clbl', cell:'ccell', fx:'cfx' };
   const totalCols = 1 + c.divisions.length + c.fixed.length;
   let cols = '';
-  if(forPrint){ const w=(100/totalCols).toFixed(2); cols = `<colgroup>`+Array.from({length:totalCols},()=>`<col style="width:${w}%">`).join('')+`</colgroup>`; }
+  if(forPrint){
+    const rest = ((100-19)/Math.max(1,totalCols-1)).toFixed(2);
+    cols = `<colgroup><col style="width:19%">`+Array.from({length:totalCols-1},()=>`<col style="width:${rest}%">`).join('')+`</colgroup>`;
+  }
   let head = `<thead><tr><th>구분</th>`;
   c.divisions.forEach(d=> head += `<th>${esc(d)}</th>`);
   c.fixed.forEach(f=> head += `<th>${esc(f.label)}</th>`);
@@ -1195,8 +1204,15 @@ function buildChanGrid(forPrint){
 function buildChanPrint(){
   const c = DB.chanmap;
   let h = prTitle(c.title||'성찬위원 배치도');
+  h += `<div class="chan-wrap">`;
   h += buildChanGrid(true);
-  (c.notes||[]).forEach(n=>{ if(n) h += `<div class="pr-note">${esc(n)}</div>`; });
+  const notes = (c.notes||[]).filter(Boolean);
+  if(notes.length){
+    h += `<div class="pr-notes">`;
+    notes.forEach(n=>{ h += `<div class="pr-note">${esc(n)}</div>`; });
+    h += `</div>`;
+  }
+  h += `</div>`;
   return h;
 }
 function renderChan(){
@@ -1239,6 +1255,10 @@ function printCSS(orient){
     .pr-sub { text-align:center; font-size:11.5px; font-weight:500; letter-spacing:.01em; margin:0 0 2px; color:#6b7280; }
     .pr-rule { width:48px; height:2.5px; background:#c79a3c; border-radius:2px; margin:7px auto 13px; }
     .pr-note { font-size:10px; color:#374151; margin:0 0 4px; line-height:1.5; }
+    .pr-notes { display:grid; grid-template-columns:1fr 1fr; gap:1px 22px; margin:0 0 9px; }
+    .pr-notes .pr-note { margin:0 0 2px; }
+    .chan-wrap { max-width:138mm; margin:0 auto; }
+    .chan-wrap table.pr { margin-bottom:9px; }
     table.pr { border-collapse:collapse; width:100%; table-layout:fixed; border:1.7px solid #101631; }
     table.pr th, table.pr td { border:.7px solid #c2c7d2; padding:4px 4px; text-align:center; font-size:10px; color:#1b1f2e; word-break:keep-all; vertical-align:middle; line-height:1.38; }
     table.pr thead th { background:#101631; color:#fff; font-weight:700; letter-spacing:.02em; border-color:#101631; padding:5px 4px; }
@@ -1303,6 +1323,10 @@ async function exportImage(view){
     table.pr td.sum{background:#e9ecf5;font-weight:700;color:#101631}
     table.pr td.mv{text-align:center}
     .pr-note{font-size:12.5px;color:#374151;margin:0 0 5px;line-height:1.5}
+    .pr-notes{display:grid;grid-template-columns:1fr 1fr;gap:2px 26px;margin:0 0 12px}
+    .pr-notes .pr-note{margin:0 0 3px}
+    .chan-wrap{max-width:600px;margin:0 auto}
+    .chan-wrap table.pr{margin-bottom:12px}
     .pr-split{display:flex;gap:18px;align-items:flex-start}
     .pr-split>div{flex:1}
   </style>` + buildPrint(view);
@@ -1614,6 +1638,11 @@ function onRoomDoc(doc){
   if(!DB || DB.roomCode!==sync.code) return;
   const data = doc.data()||{};
   if(data.app && data.app!=='ev') return; // 다른 앱의 방 코드면 무시
+  // 내 기기에서 방금 저장한 내용의 반향(echo)이면 화면을 다시 그리지 않음 (스크롤 유지)
+  const incoming = stableStr({ app:'ev', meta:data.meta||{}, settings:data.settings||{}, plan:data.plan||{}, chanmap:data.chanmap||{} });
+  if(!sync.firstSnap.doc && sync.mirror && sync.mirror.doc === incoming){
+    setSyncStatus(navigator.onLine?'live':'offline'); return;
+  }
   sync.applyingRemote = true;
   if(sync.firstSnap.doc){
     sync.firstSnap.doc = false;
@@ -1630,7 +1659,7 @@ function onRoomDoc(doc){
   hydrateEvent(DB);
   if(sync.mirror) sync.mirror.doc = stableStr(roomDocOf(DB));
   sync.applyingRemote = false; saveVault();
-  setSyncStatus(navigator.onLine?'live':'offline'); render();
+  setSyncStatus(navigator.onLine?'live':'offline'); rerenderPreserve();
 }
 function onTargetsSnap(qs){
   if(!DB || DB.roomCode!==sync.code) return;
@@ -1650,14 +1679,17 @@ function onTargetsSnap(qs){
     if(ch.type==='removed'){
       if(byId[id]){ DB.targets=DB.targets.filter(x=>String(x.id)!==String(id)); delete byId[id]; if(sync.mirror.targets) delete sync.mirror.targets[id]; changed=true; }
     }else{
+      const s = stableStr(d);
+      // 내 기기에서 방금 저장한 내용의 반향이면 건너뜀 (스크롤 유지)
+      if(byId[id] && sync.mirror.targets && sync.mirror.targets[id]===s) return;
       const ex=byId[id];
       if(ex){ Object.keys(ex).forEach(k=> delete ex[k]); Object.assign(ex,d); }
       else { DB.targets.push(d); byId[id]=d; }
-      sync.mirror.targets[id]=stableStr(d); changed=true;
+      sync.mirror.targets[id]=s; changed=true;
     }
   });
   setSyncStatus(navigator.onLine?'live':'offline');
-  if(changed){ sync.applyingRemote=true; saveVault(); sync.applyingRemote=false; render(); }
+  if(changed){ sync.applyingRemote=true; saveVault(); sync.applyingRemote=false; rerenderPreserve(); }
 }
 
 function syncPushIfLinked(){
