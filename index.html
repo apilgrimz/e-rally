@@ -162,6 +162,15 @@ table.pl td.nm { font-weight:700; color:var(--ink); text-align:left; }
 table.pl tbody tr { cursor:pointer; }
 table.pl tbody tr:active td { background:var(--bg-2); }
 table.pl .dim { color:var(--ink-mute); opacity:.5; }
+table.pl td.chk { width:50px; cursor:pointer; }
+table.pl td.chk .ck { display:inline-grid; place-items:center; width:24px; height:24px; margin:0 auto; border:1.6px solid var(--line); border-radius:7px; color:transparent; font-size:15px; font-weight:800; }
+table.pl td.chk.on .ck { background:var(--green); border-color:var(--green); color:#06351F; }
+table.pl td.chk:active { background:var(--bg-3); }
+.pray-toolbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px; font-size:12px; }
+.pray-toolbar .pday { width:auto; min-width:120px; padding:7px 28px 7px 10px; font-size:14px; }
+/* 전도현황 이름 메모 표시 */
+table.sx td.col-name .ndot { color:var(--gold); font-size:8px; margin-left:4px; vertical-align:middle; }
+table.sx td.col-name.has-note { color:var(--gold-soft); }
 
 /* ============ 집회계획 (화면) — 구분(대분류/세부) + 요일/공통 칸 ============ */
 .plan-head { margin-bottom:8px; }
@@ -460,11 +469,11 @@ function computeSpans(list, keyFn, allowEmpty){
 }
 function attStats(list){
   const days = DB.settings.days;
-  // 출석 행렬: present[ti][di]
-  const present = list.map(t => days.map((d,di)=>{ const a=t.attend[di]||{}; return !!(a.on||a.off); }));
-  const daily = [];        // {on, off}  — 그날 참석
-  const everyThrough = []; // 그 날까지 매일 빠짐없이 참석한 인원
-  const cumAny = [];       // 그 날까지 하루라도 참석한 인원(누적)
+  // 전일·누적 집계는 '오프라인 참석'만 기준으로 한다
+  const present = list.map(t => days.map((d,di)=>{ const a=t.attend[di]||{}; return !!a.off; }));
+  const daily = [];        // {on, off}  — 그날 참석(온/오프 각각)
+  const everyThrough = []; // 그 날까지 매일 빠짐없이 '오프' 참석한 인원
+  const cumAny = [];       // 그 날까지 하루라도 '오프' 참석한 인원(누적)
   days.forEach((d,di)=>{
     let on=0, off=0;
     list.forEach(t=>{ const a=t.attend[di]||{}; if(a.on) on++; if(a.off) off++; });
@@ -517,7 +526,7 @@ function renderStatus(){
        <button class="btn btn-secondary btn-sm" data-act="print-status">🖨 인쇄</button>
      </div>
    </div>
-   <div class="legend"><span>참석 표시: <b>○</b></span><span><b>온</b> 온라인</span><span><b>오프</b> 오프라인</span><span class="muted">날짜 칸을 눌러 체크</span></div>`;
+   <div class="legend"><span>참석 표시: <b>○</b></span><span><b>온</b> 온라인</span><span><b>오프</b> 오프라인</span><span class="muted">날짜 칸을 눌러 체크 · 이름을 누르면 상태 입력</span></div>`;
 
   if(!list.length){
     return html + `<div class="empty-state">아직 대상자가 없습니다.<br>오른쪽 아래 <b>＋</b> 버튼으로 추가하세요.</div>`;
@@ -535,9 +544,10 @@ function renderStatus(){
 
   let body = '<tbody>';
   list.forEach((t,idx)=>{
+    const noteCls = t.note ? ' has-note' : '';
     body += `<tr data-id="${t.id}">
       <td class="col-no">${idx+1}</td>
-      <td class="col-name row-edit" data-edit="${t.id}">${esc(t.name)||'<span class="dim">이름</span>'}</td>
+      <td class="col-name row-edit${noteCls}" data-status="${t.id}">${esc(t.name)||'<span class="dim">이름</span>'}${t.note?'<span class="ndot">●</span>':''}</td>
       <td class="zo">${esc(t.zone)}</td><td class="ld">${esc(t.leader)}</td><td class="rel">${esc(t.relation)}</td>`;
     days.forEach((d,di)=>{
       const a = t.attend[di] || {};
@@ -552,12 +562,12 @@ function renderStatus(){
   let r1 = `<tr class="sum"><td class="col-no"></td><td class="col-name">당일 참석계</td><td colspan="3" class="aggdesc">온 / 오프</td>`;
   st.daily.forEach(x=>{ r1 += `<td>${x.on}</td><td>${x.off}</td>`; });
   body += r1 + `</tr>`;
-  // 전일 참석계: 그 날까지 매일 빠짐없이 참석한 인원
-  let r2 = `<tr class="sum"><td class="col-no"></td><td class="col-name">전일 참석계</td><td colspan="3" class="aggdesc">매일 참석</td>`;
+  // 전일 참석계: 그 날까지 매일 빠짐없이 오프 참석한 인원
+  let r2 = `<tr class="sum"><td class="col-no"></td><td class="col-name">전일 참석계</td><td colspan="3" class="aggdesc">매일 오프</td>`;
   st.everyThrough.forEach(v=>{ r2 += `<td colspan="2">${v}</td>`; });
   body += r2 + `</tr>`;
-  // 누적 참석계: 그 날까지 하루라도 참석한 인원
-  let r3 = `<tr class="sum"><td class="col-no"></td><td class="col-name">누적 참석계</td><td colspan="3" class="aggdesc">하루라도 참석</td>`;
+  // 누적 참석계: 그 날까지 하루라도 오프 참석한 인원
+  let r3 = `<tr class="sum"><td class="col-no"></td><td class="col-name">누적 참석계</td><td colspan="3" class="aggdesc">하루라도 오프</td>`;
   st.cumAny.forEach(v=>{ r3 += `<td colspan="2">${v}</td>`; });
   body += r3 + `</tr>`;
   body += '</tbody>';
@@ -568,6 +578,8 @@ function renderStatus(){
 /* ----- 기도명단 (사진 서식 · 한 단 · 구역/인도자 셀 병합) ----- */
 function renderPray(){
   const list = sortedTargets();
+  const days = DB.settings.days;
+  if(prayDay > days.length-1) prayDay = 0;
   let html = `
    <div class="view-head">
      <div class="vt">기도 명단<small>대상자 ${list.length}명</small></div>
@@ -579,15 +591,19 @@ function renderPray(){
   if(!list.length){
     return html + `<div class="empty-state">아직 대상자가 없습니다.<br>오른쪽 아래 <b>＋</b> 버튼으로 추가하세요.</div>`;
   }
+  const daySel = days.map((d,i)=> `<option value="${i}" ${i===prayDay?'selected':''}>${esc(d.label)}</option>`).join('');
+  html += `<div class="pray-toolbar"><span class="muted">참석 체크 기준일</span><select id="prayDaySel" class="pday">${daySel}</select><span class="muted">체크 시 전도현황(오프)에 반영</span></div>`;
   const zoneSpans = computeSpans(list, t=>t.zone);
   const leaderSpans = computeSpans(list, t=> t.zone+'||'+t.leader);
   let h = `<div class="pl-wrap"><table class="pl">
-    <thead><tr><th>번호</th><th>구역</th><th>인도자</th><th>관계</th><th>대상자</th></tr></thead><tbody>`;
+    <thead><tr><th>번호</th><th>구역</th><th>인도자</th><th>관계</th><th>대상자</th><th>참석</th></tr></thead><tbody>`;
   list.forEach((t,idx)=>{
+    const a = t.attend[prayDay] || {};
     h += `<tr data-edit="${t.id}"><td class="no">${idx+1}</td>`;
     if(zoneSpans[idx]>0) h += `<td class="zo" rowspan="${zoneSpans[idx]}">${esc(t.zone)}</td>`;
     if(leaderSpans[idx]>0) h += `<td class="ld" rowspan="${leaderSpans[idx]}">${esc(t.leader)}</td>`;
-    h += `<td class="rel">${esc(t.relation)}</td><td class="nm">${esc(t.name)||'<span class="dim">이름</span>'}</td></tr>`;
+    h += `<td class="rel">${esc(t.relation)}</td><td class="nm">${esc(t.name)||'<span class="dim">이름</span>'}</td>`;
+    h += `<td class="chk ${a.off?'on':''}" data-attendchk="${t.id}"><span class="ck">${a.off?'✓':''}</span></td></tr>`;
   });
   h += `</tbody></table></div>`;
   return html + h;
@@ -639,7 +655,9 @@ function renderPlan(){
        <button class="btn btn-secondary btn-sm" data-act="print-plan">🖨 인쇄</button>
      </div>
    </div>`;
-  html += `<div class="plan-head"><div class="pt">${esc(p.title)||'집회 계획'}</div>${p.sub?`<div class="ps">${esc(p.sub)}</div>`:''}</div>`;
+  const planTitle = [DB.meta.churchName, DB.meta.title].filter(Boolean).join(' ') || '집회 계획';
+  const planSub = [DB.meta.period, DB.meta.pastor?('강사 '+DB.meta.pastor):''].filter(Boolean).join(' · ');
+  html += `<div class="plan-head"><div class="pt">${esc(planTitle)}</div>${planSub?`<div class="ps">${esc(planSub)}</div>`:''}</div>`;
   if(p.topNotes && p.topNotes.length && p.topNotes.some(n=>n)){
     html += `<div class="plan-notes">`;
     p.topNotes.forEach(n=>{ if(n) html += `<div class="pn">${esc(n)}</div>`; });
@@ -659,9 +677,19 @@ function bindView(){
   $$('[data-act]').forEach(b=> b.onclick = ()=> handleAct(b.dataset.act));
   // 전도현황 셀 토글
   $$('#view td.tap').forEach(td=> td.onclick = ()=> toggleAttend(td.dataset.tap, +td.dataset.day, td.dataset.mode));
-  // 편집 진입 (대상자)
+  // 전도현황 이름 탭 → 상태 팝업
+  $$('#view [data-status]').forEach(el=> el.onclick = ()=>{
+    const t = DB.targets.find(x=>x.id===el.dataset.status); if(t) openStatusPopup(t);
+  });
+  // 기도명단 참석 체크 → 전도현황 반영 (행 편집과 분리)
+  $$('#view [data-attendchk]').forEach(el=> el.onclick = (e)=>{
+    e.stopPropagation(); togglePrayAttend(el.dataset.attendchk);
+  });
+  // 기도명단 기준일 선택
+  const pd = $('#prayDaySel'); if(pd) pd.onchange = ()=>{ prayDay = +pd.value; rerenderPreserve(); };
+  // 편집 진입 (대상자) — 기도명단 행 등
   $$('#view [data-edit]').forEach(el=> el.onclick = (e)=>{
-    if(e.target.closest('.tap')) return;
+    if(e.target.closest('.tap') || e.target.closest('[data-attendchk]')) return;
     const t = DB.targets.find(x=>x.id===el.dataset.edit); if(t) openTargetSheet(t, false);
   });
   // 집회계획 항목 탭 → 편집
@@ -682,13 +710,49 @@ function handleAct(a){
   else if(a==='edit-chan') openChanSheet();
 }
 
-/* 대상자 토글 (즉시 저장) */
+/* 화면 다시 그릴 때 스크롤 위치 유지 */
+function rerenderPreserve(){
+  const y = window.scrollY || window.pageYOffset || 0;
+  const sc = $('#view .tbl-scroll'); const sl = sc ? sc.scrollLeft : 0;
+  const pc = $('#view .ptbl-scroll'); const pl = pc ? pc.scrollLeft : 0;
+  render();
+  const sc2 = $('#view .tbl-scroll'); if(sc2) sc2.scrollLeft = sl;
+  const pc2 = $('#view .ptbl-scroll'); if(pc2) pc2.scrollLeft = pl;
+  window.scrollTo(0, y);
+}
+
+/* 대상자 토글 (즉시 저장, 체크한 자리 유지) */
 function toggleAttend(id, dayIdx, mode){
   const t = DB.targets.find(x=>x.id===id); if(!t) return;
   if(!t.attend[dayIdx]) t.attend[dayIdx] = {};
   t.attend[dayIdx][mode] = !t.attend[dayIdx][mode];
   saveDB();
-  render();
+  rerenderPreserve();
+}
+
+/* 기도명단 참석 체크 → 전도현황(선택 일자, 오프라인)에 반영 */
+let prayDay = 0;
+function togglePrayAttend(id){
+  const t = DB.targets.find(x=>x.id===id); if(!t) return;
+  const di = Math.min(prayDay, Math.max(0, DB.settings.days.length-1));
+  if(!t.attend[di]) t.attend[di] = {};
+  t.attend[di].off = !t.attend[di].off;
+  saveDB();
+  rerenderPreserve();
+}
+
+/* 전도현황: 이름 탭 → 상태(메모) 팝업 */
+function openStatusPopup(t){
+  const body = `
+    <div class="field"><label>${esc(t.name)||'대상자'} · 상태 / 메모</label>
+      <textarea id="st-note" rows="5" placeholder="기도제목, 상담 내용, 특이사항 등을 적어 주세요" autofocus>${esc(t.note)}</textarea></div>
+    <button class="btn btn-secondary btn-block" id="st-full">대상자 정보 전체 편집</button>`;
+  openSheet('상태 입력', body, ()=>{
+    t.note = $('#st-note').value.trim();
+    saveDB(); closeSheet(); rerenderPreserve();
+    toast('저장되었습니다');
+  });
+  $('#st-full').onclick = ()=>{ closeSheet(); setTimeout(()=> openTargetSheet(t, false), 60); };
 }
 
 /* =================================================================
@@ -788,9 +852,6 @@ function openPlanSheet(){
   p.topNotes = p.topNotes||[]; p.dayLabels = p.dayLabels||[]; p.rows = p.rows||[];
 
   function collect(){
-    let v;
-    v=$('#pe-title'); if(v) p.title=v.value;
-    v=$('#pe-sub');   if(v) p.sub=v.value;
     p.topNotes.forEach((_,i)=>{ const t=$(`[data-tn="${i}"]`); if(t) p.topNotes[i]=t.value; });
     p.dayLabels.forEach((_,i)=>{ const d=$(`[data-dl="${i}"]`); if(d) p.dayLabels[i]=d.value; });
     p.rows.forEach((r,i)=>{
@@ -801,9 +862,7 @@ function openPlanSheet(){
     });
   }
   function renderEditor(){
-    let h = `<div class="section-title">기본 정보</div>
-      <div class="field"><label>제목</label><input id="pe-title" value="${esc(p.title)}" placeholder="예) 대전도집회 계획"/></div>
-      <div class="field"><label>부제 (기간·강사)</label><input id="pe-sub" value="${esc(p.sub)}" placeholder="예) 2026년 3월 9일(월)~15일(주일), 오성용 목사"/></div>`;
+    let h = `<div class="muted" style="margin-bottom:6px">제목·기간·강사는 <b>설정</b>의 집회 정보에서 자동으로 들어갑니다.</div>`;
     h += `<div class="section-title">상단 안내문</div><div id="tn-list">`;
     p.topNotes.forEach((n,i)=>{ h += `<div class="editrow"><textarea data-tn="${i}" rows="2" placeholder="안내문">${esc(n)}</textarea><button class="x" data-tnx="${i}">✕</button></div>`; });
     h += `</div><button class="btn btn-secondary btn-sm" id="tn-add">＋ 안내문 추가</button>`;
@@ -924,12 +983,19 @@ function openChanSheet(){
 /* =================================================================
  * 인쇄 / 사진 출력  (공통 표 빌더 — 흑백 A4)
  * ================================================================= */
+/* 인쇄/사진 공통 제목: 교회 이름 + 집회 이름 */
+function prTitle(docType, extra){
+  const name = [esc(DB.meta.churchName||''), esc(DB.meta.title||'')].filter(Boolean).join(' ');
+  let h = `<div class="pr-title">${name||esc(docType||'')}</div>`;
+  const subParts = [docType, DB.meta.period, extra].filter(Boolean).map(esc);
+  if(subParts.length) h += `<div class="pr-sub">${subParts.join(' · ')}</div>`;
+  return h;
+}
 function buildStatusPrint(){
   const list = sortedTargets(); const days = DB.settings.days;
   const zoneSpans = computeSpans(list, t=>t.zone);
   const leaderSpans = computeSpans(list, t=> t.zone+'||'+t.leader);
-  let h = `<div class="pr-title">${esc(DB.meta.churchName||'')} 전도 현황</div>`;
-  h += `<div class="pr-sub">${esc([DB.meta.title!=='전도집회'?DB.meta.title:'', DB.meta.period].filter(Boolean).join(' · '))}</div>`;
+  let h = prTitle('전도 현황');
   // colgroup
   let cols = `<col style="width:5%"><col style="width:7%"><col style="width:9%"><col style="width:7%"><col style="width:10%">`;
   const dayW = (62/Math.max(1,days.length)).toFixed(2);
@@ -952,33 +1018,36 @@ function buildStatusPrint(){
   let r1 = `<tr><td class="lb" colspan="5">당일 참석계 (온/오프)</td>`;
   st.daily.forEach(x=>{ r1 += `<td class="sum">${x.on}</td><td class="sum">${x.off}</td>`; });
   body += r1 + `</tr>`;
-  let r2 = `<tr><td class="lb" colspan="5">전일 참석계 (매일 참석)</td>`;
+  let r2 = `<tr><td class="lb" colspan="5">전일 참석계 (매일 오프)</td>`;
   st.everyThrough.forEach(v=>{ r2 += `<td class="sum" colspan="2">${v}</td>`; });
   body += r2 + `</tr>`;
-  let r3 = `<tr><td class="lb" colspan="5">누적 참석계 (하루라도 참석)</td>`;
+  let r3 = `<tr><td class="lb" colspan="5">누적 참석계 (하루라도 오프)</td>`;
   st.cumAny.forEach(v=>{ r3 += `<td class="sum" colspan="2">${v}</td>`; });
   body += r3 + `</tr>`;
   body += '</tbody>';
-  return `<table class="pr"><colgroup>${cols}</colgroup>${head}${body}</table>`;
+  return h + `<table class="pr"><colgroup>${cols}</colgroup>${head}${body}</table>`;
 }
 function buildPrayPrint(){
   const list = sortedTargets();
-  const half = Math.ceil(list.length/2);
-  function block(arr, startNo){
-    let b = `<table class="pr"><colgroup><col style="width:10%"><col style="width:22%"><col style="width:24%"><col style="width:18%"><col style="width:26%"></colgroup>
-      <thead><tr><th>번호</th><th>구역</th><th>인도자</th><th>관계</th><th>대상자</th></tr></thead><tbody>`;
-    arr.forEach((t,i)=>{ b += `<tr><td>${startNo+i}</td><td>${esc(t.zone)}</td><td>${esc(t.leader)}</td><td>${esc(t.relation)}</td><td class="nm">${esc(t.name)}</td></tr>`; });
-    return b + `</tbody></table>`;
-  }
-  let h = `<div class="pr-title">${esc(DB.meta.churchName||'')} 기도 명단</div>`;
-  h += `<div class="pr-sub">${esc([DB.meta.title!=='전도집회'?DB.meta.title:'', DB.meta.period].filter(Boolean).join(' · '))} · 총 ${list.length}명</div>`;
-  h += `<div class="pr-split"><div>${block(list.slice(0,half),1)}</div><div>${block(list.slice(half),half+1)}</div></div>`;
+  const zoneSpans = computeSpans(list, t=>t.zone);
+  const leaderSpans = computeSpans(list, t=> t.zone+'||'+t.leader);
+  let h = prTitle('기도 명단', `총 ${list.length}명`);
+  h += `<table class="pr"><colgroup><col style="width:9%"><col style="width:17%"><col style="width:23%"><col style="width:17%"><col style="width:34%"></colgroup>
+    <thead><tr><th>번호</th><th>구역</th><th>인도자</th><th>관계</th><th>대상자</th></tr></thead><tbody>`;
+  list.forEach((t,idx)=>{
+    h += `<tr><td>${idx+1}</td>`;
+    if(zoneSpans[idx]>0) h += `<td rowspan="${zoneSpans[idx]}">${esc(t.zone)}</td>`;
+    if(leaderSpans[idx]>0) h += `<td rowspan="${leaderSpans[idx]}">${esc(t.leader)}</td>`;
+    h += `<td>${esc(t.relation)}</td><td class="nm">${esc(t.name)}</td></tr>`;
+  });
+  h += `</tbody></table>`;
   return h;
 }
 function buildPlanPrint(){
   const p = DB.plan;
-  let h = `<div class="pr-title">${esc(p.title)||'집회 계획'}</div>`;
-  const sub = [esc(DB.meta.churchName||''), esc(p.sub||'')].filter(Boolean).join('  ·  ');
+  const name = [esc(DB.meta.churchName||''), esc(DB.meta.title||'')].filter(Boolean).join(' ');
+  let h = `<div class="pr-title">${name||'집회 계획'}</div>`;
+  const sub = [esc(DB.meta.period||''), DB.meta.pastor?('강사 '+esc(DB.meta.pastor)):''].filter(Boolean).join(' · ');
   if(sub) h += `<div class="pr-sub">${sub}</div>`;
   (p.topNotes||[]).forEach(n=>{ if(n) h += `<div class="pr-note">${esc(n)}</div>`; });
   h += buildPlanGrid(true);
@@ -1015,8 +1084,7 @@ function buildChanGrid(forPrint){
 }
 function buildChanPrint(){
   const c = DB.chanmap;
-  let h = `<div class="pr-title">${esc(c.title)||'성찬위원 배치도'}</div>`;
-  if(DB.meta.churchName) h += `<div class="pr-sub">${esc(DB.meta.churchName)}</div>`;
+  let h = prTitle(c.title||'성찬위원 배치도');
   h += buildChanDiagram(true);
   h += `<div style="height:8px"></div>`;
   h += buildChanGrid(true);
@@ -1054,19 +1122,55 @@ function buildPrint(view){
   return buildPlanPrint();
 }
 
-/* 인쇄: 방향 동적 지정 */
-let pageStyleEl = null;
-function setPageOrientation(o){
-  if(!pageStyleEl){ pageStyleEl = document.createElement('style'); document.head.appendChild(pageStyleEl); }
-  pageStyleEl.textContent = `@page { size:A4 ${o}; margin:${o==='landscape'?'8mm 8mm':'10mm 9mm'}; }`;
+/* 인쇄: 앱 CSS와 독립된 iframe 문서로 인쇄 (모바일 호환 + 빈화면 방지) */
+function printCSS(orient){
+  return `
+    @page { size:A4 ${orient}; margin:${orient==='landscape'?'8mm':'10mm'}; }
+    * { box-sizing:border-box; }
+    body { font-family:'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif; margin:0; color:#000; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .pr-title { text-align:center; font-size:17px; font-weight:800; margin:0 0 3px; }
+    .pr-sub { text-align:center; font-size:11.5px; margin:0 0 8px; color:#333; }
+    .pr-note { font-size:10px; margin:0 0 3px; line-height:1.45; text-align:left; }
+    table.pr { border-collapse:collapse; width:100%; table-layout:fixed; }
+    table.pr th, table.pr td { border:1px solid #000; padding:3px 3px; text-align:center; font-size:10px; color:#000; word-break:keep-all; vertical-align:middle; }
+    table.pr th { background:#e8e8e8; font-weight:700; }
+    table.pr td.nm { font-weight:700; font-size:11px; }
+    table.pr td.lb { background:#f1f1f1; font-weight:700; text-align:center; }
+    table.pr td.sum { background:#f1f1f1; font-weight:700; }
+    table.pr td.mv { text-align:center; }
+    .pr-split { display:flex; gap:10px; align-items:flex-start; }
+    .pr-split > div { flex:1; }
+    .cdiag-pr { text-align:center; margin:0 0 8px; }
+    .cdiag-pr .cd-stage { font-size:9px; color:#333; margin-bottom:4px; }
+    .cdiag-pr .cd-table { display:inline-block; border:1.5px solid #000; padding:5px 34px; font-weight:700; font-size:11px; }
+    .cdiag-pr .cd-divs { display:flex; gap:6px; justify-content:center; margin-top:5px; }
+    .cdiag-pr .cd-dv { border:1px solid #000; padding:3px 14px; font-size:10px; }`;
 }
 function doPrint(view){
   const orient = (view==='pray'||view==='chan') ? 'portrait' : 'landscape';
-  setPageOrientation(orient);
-  $('#printArea').innerHTML = buildPrint(view);
-  setTimeout(()=>{ window.print(); }, 80);
+  let inner = '';
+  try { inner = buildPrint(view); } catch(e){ console.error(e); toast('인쇄 내용을 만들 수 없어요'); return; }
+  const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>인쇄</title><style>${printCSS(orient)}</style></head><body>${inner}</body></html>`;
+  const old = document.getElementById('printFrame'); if(old) old.remove();
+  const ifr = document.createElement('iframe');
+  ifr.id = 'printFrame';
+  ifr.setAttribute('aria-hidden','true');
+  ifr.style.cssText = 'position:fixed; right:0; bottom:0; width:0; height:0; border:0; opacity:0;';
+  document.body.appendChild(ifr);
+  const run = ()=>{
+    try{
+      const w = ifr.contentWindow;
+      w.focus();
+      w.print();
+    }catch(e){ console.error(e); toast('인쇄를 시작할 수 없어요'); }
+    setTimeout(()=>{ try{ ifr.remove(); }catch(e){} }, 1500);
+  };
+  const d = ifr.contentWindow.document;
+  d.open(); d.write(html); d.close();
+  // 렌더 완료 후 인쇄
+  if(ifr.contentWindow.document.readyState === 'complete') setTimeout(run, 350);
+  else ifr.onload = ()=> setTimeout(run, 350);
 }
-window.onafterprint = ()=>{ $('#printArea').innerHTML=''; };
 
 /* 사진(PNG) 출력 — 오프스크린 라이트 테이블 + html2canvas */
 async function exportImage(view){
@@ -1083,8 +1187,8 @@ async function exportImage(view){
     table.pr th{background:#e8e8e8;font-weight:700}
     table.pr td.nm{font-weight:700}
     table.pr td.lb,table.pr td.sum{background:#f1f1f1;font-weight:700}
-    table.pr td.lb{text-align:left}
-    table.pr td.mv{text-align:left}
+    table.pr td.lb{text-align:center}
+    table.pr td.mv{text-align:center}
     .pr-note{font-size:12px;color:#000;margin:0 0 4px;line-height:1.45}
     .cdiag-pr{text-align:center;margin:0 0 10px}
     .cdiag-pr .cd-stage{font-size:11px;color:#333;margin-bottom:6px}
