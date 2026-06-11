@@ -166,6 +166,8 @@ table.pl td.chk { width:50px; cursor:pointer; }
 table.pl td.chk .ck { display:inline-grid; place-items:center; width:24px; height:24px; margin:0 auto; border:1.6px solid var(--line); border-radius:7px; color:transparent; font-size:15px; font-weight:800; }
 table.pl td.chk.on .ck { background:var(--green); border-color:var(--green); color:#06351F; }
 table.pl td.chk:active { background:var(--bg-3); }
+table.pl td.nm .ndot { color:var(--gold); font-size:8px; margin-left:4px; vertical-align:middle; }
+table.pl td.nm.has-note { color:var(--gold-soft); }
 .pray-toolbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px; font-size:12px; }
 .pray-toolbar .pday { width:auto; min-width:120px; padding:7px 28px 7px 10px; font-size:14px; }
 /* 전도현황 이름 메모 표시 */
@@ -456,12 +458,69 @@ DB = loadDB();
 /* ---------- 정렬 / 셀 병합 (검증된 로직) ---------- */
 function zoneIndex(z){ const i = DB.settings.zones.indexOf(z); return i<0 ? 999 : i; }
 function sortedTargets(){
+  const col = (a,b)=> String(a||'').localeCompare(String(b||''), 'ko');
   return DB.targets.map((t,i)=>({t,i}))
-    .sort((a,b)=> zoneIndex(a.t.zone)-zoneIndex(b.t.zone) || a.i-b.i)
+    .sort((a,b)=> zoneIndex(a.t.zone)-zoneIndex(b.t.zone)
+                || col(a.t.leader, b.t.leader)
+                || col(a.t.name, b.t.name)
+                || a.i-b.i)
     .map(x=>x.t);
 }
 /* 전도현황 명단 = 기도명단에서 '참석' 체크(등록)된 대상자만 */
 function enrolledTargets(){ return sortedTargets().filter(t=> t.enrolled); }
+
+/* 설정의 기간 → 집회계획 날짜/요일 자동 생성 */
+const WEEK_KO = ['주일','월','화','수','목','금','토'];
+function parsePeriod(s){
+  if(!s) return null;
+  let x = String(s).replace(/[년월]/g,'.').replace(/일/g,'').replace(/\([^)]*\)/g,'').replace(/\s/g,'');
+  const parts = x.split(/[~∼〜–—\-]/).filter(Boolean);
+  if(parts.length<2) return null;
+  const a = parts[0].split('.').filter(Boolean).map(Number);
+  const b = parts[1].split('.').filter(Boolean).map(Number);
+  if(a.some(isNaN) || b.some(isNaN)) return null;
+  let year, month, sd;
+  if(a.length>=3){ year=a[0]; month=a[1]; sd=a[2]; }
+  else if(a.length===2){ year=new Date().getFullYear(); month=a[0]; sd=a[1]; }
+  else return null;
+  let ey=year, em=month, ed;
+  if(b.length>=3){ ey=b[0]; em=b[1]; ed=b[2]; }
+  else if(b.length===2){ em=b[0]; ed=b[1]; }
+  else if(b.length===1){ ed=b[0]; }
+  else return null;
+  return { year, month, sd, ey, em, ed };
+}
+function genDayLabels(period){
+  const p = parsePeriod(period); if(!p) return null;
+  const start = new Date(p.year, p.month-1, p.sd);
+  const end = new Date(p.ey, p.em-1, p.ed);
+  if(isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return null;
+  const out = []; const d = new Date(start); let guard=0;
+  while(d <= end && guard < 70){ out.push(`${d.getDate()}(${WEEK_KO[d.getDay()]})`); d.setDate(d.getDate()+1); guard++; }
+  return out.length ? out : null;
+}
+function applyPeriodToPlan(){
+  const labels = genDayLabels(DB.meta.period);
+  if(!labels) return false;
+  DB.plan.dayLabels = labels;
+  (DB.plan.rows||[]).forEach(r=>{
+    if(r.mode==='merged') return;
+    r.cells = r.cells || [];
+    if(r.cells.length < labels.length) r.cells = r.cells.concat(new Array(labels.length - r.cells.length).fill(''));
+    else if(r.cells.length > labels.length) r.cells = r.cells.slice(0, labels.length);
+  });
+  return true;
+}
+
+/* 앱 공유하기 (데이터 없이 앱만) */
+async function shareApp(){
+  const url = location.href.split('#')[0];
+  try{
+    if(navigator.share){ await navigator.share({ title:'전도집회', text:'전도집회 앱 — 전도현황·기도명단·집회계획 관리', url }); return; }
+  }catch(e){ if(e && e.name==='AbortError') return; }
+  try{ await navigator.clipboard.writeText(url); toast('앱 주소를 복사했어요'); }
+  catch(e){ toast('주소: '+url); }
+}
 function computeSpans(list, keyFn, allowEmpty){
   const out = new Array(list.length).fill(0); let i=0;
   while(i<list.length){
@@ -572,15 +631,15 @@ function statusSummaryRows(list){
   let out = '';
   // 당일 참석계: 날짜별 온/오프
   let r1 = `<tr class="sum"><td class="col-no"></td><td class="col-name">당일 참석계</td><td colspan="3" class="aggdesc">온 / 오프</td>`;
-  st.daily.forEach(x=>{ r1 += `<td>${x.on}</td><td>${x.off}</td>`; });
+  st.daily.forEach((x,di)=>{ r1 += `<td data-sum="on${di}">${x.on}</td><td data-sum="off${di}">${x.off}</td>`; });
   out += r1 + `</tr>`;
   // 전일 참석계: 그 날까지 매일 빠짐없이 오프 참석한 인원
   let r2 = `<tr class="sum"><td class="col-no"></td><td class="col-name">전일 참석계</td><td colspan="3" class="aggdesc">매일 오프</td>`;
-  st.everyThrough.forEach(v=>{ r2 += `<td colspan="2">${v}</td>`; });
+  st.everyThrough.forEach((v,di)=>{ r2 += `<td colspan="2" data-sum="ev${di}">${v}</td>`; });
   out += r2 + `</tr>`;
   // 누적 참석계: 그 날까지 하루라도 오프 참석한 인원
   let r3 = `<tr class="sum"><td class="col-no"></td><td class="col-name">누적 참석계</td><td colspan="3" class="aggdesc">하루라도 오프</td>`;
-  st.cumAny.forEach(v=>{ r3 += `<td colspan="2">${v}</td>`; });
+  st.cumAny.forEach((v,di)=>{ r3 += `<td colspan="2" data-sum="cum${di}">${v}</td>`; });
   out += r3 + `</tr>`;
   return out;
 }
@@ -609,7 +668,7 @@ function renderPray(){
     h += `<tr data-edit="${t.id}"><td class="no">${idx+1}</td>`;
     if(zoneSpans[idx]>0) h += `<td class="zo" rowspan="${zoneSpans[idx]}">${esc(t.zone)}</td>`;
     if(leaderSpans[idx]>0) h += `<td class="ld" rowspan="${leaderSpans[idx]}">${esc(t.leader)}</td>`;
-    h += `<td class="rel">${esc(t.relation)}</td><td class="nm">${esc(t.name)||'<span class="dim">이름</span>'}</td>`;
+    h += `<td class="rel">${esc(t.relation)}</td><td class="nm${t.note?' has-note':''}" data-status="${t.id}">${esc(t.name)||'<span class="dim">이름</span>'}${t.note?'<span class="ndot">●</span>':''}</td>`;
     h += `<td class="chk ${t.enrolled?'on':''}" data-attendchk="${t.id}"><span class="ck">${t.enrolled?'✓':''}</span></td></tr>`;
   });
   h += `</tbody></table></div>`;
@@ -697,8 +756,9 @@ function bindView(){
   $$('[data-act]').forEach(b=> b.onclick = ()=> handleAct(b.dataset.act));
   // 전도현황 셀 토글
   $$('#view td.tap').forEach(td=> td.onclick = ()=> toggleAttend(td.dataset.tap, +td.dataset.day, td.dataset.mode));
-  // 전도현황 이름 탭 → 상태 팝업
-  $$('#view [data-status]').forEach(el=> el.onclick = ()=>{
+  // 이름 탭 → 상태/메모 팝업 (전도현황·기도명단 공통)
+  $$('#view [data-status]').forEach(el=> el.onclick = (e)=>{
+    e.stopPropagation();
     const t = DB.targets.find(x=>x.id===el.dataset.status); if(t) openStatusPopup(t);
   });
   // 기도명단 참석 체크 → 전도현황 등록 (행 편집과 분리)
@@ -707,7 +767,7 @@ function bindView(){
   });
   // 편집 진입 (대상자) — 기도명단 행 등
   $$('#view [data-edit]').forEach(el=> el.onclick = (e)=>{
-    if(e.target.closest('.tap') || e.target.closest('[data-attendchk]')) return;
+    if(e.target.closest('.tap') || e.target.closest('[data-attendchk]') || e.target.closest('[data-status]')) return;
     const t = DB.targets.find(x=>x.id===el.dataset.edit); if(t) openTargetSheet(t, false);
   });
   // 집회계획 항목 탭 → 편집
@@ -741,9 +801,12 @@ function rerenderPreserve(){
 
 /* 전도현황 합계행만 다시 계산해 교체 (표 스크롤 유지) */
 function refreshStatusSummary(){
-  const tbody = $('#view table.sx tbody'); if(!tbody) return;
-  $$('#view table.sx tr.sum').forEach(r=> r.remove());
-  tbody.insertAdjacentHTML('beforeend', statusSummaryRows(enrolledTargets()));
+  if(!$('#view table.sx tbody')) return;
+  const st = attStats(enrolledTargets());
+  const set = (k,v)=>{ const el = document.querySelector(`#view table.sx td[data-sum="${k}"]`); if(el) el.textContent = v; };
+  st.daily.forEach((x,di)=>{ set('on'+di, x.on); set('off'+di, x.off); });
+  st.everyThrough.forEach((v,di)=> set('ev'+di, v));
+  st.cumAny.forEach((v,di)=> set('cum'+di, v));
 }
 
 /* 대상자 토글 — 해당 칸만 제자리 갱신 (스크롤 위치 그대로) */
@@ -1028,7 +1091,8 @@ function prTitle(docType, extra){
   const name = [esc(DB.meta.churchName||''), esc(DB.meta.title||'')].filter(Boolean).join(' ');
   let h = `<div class="pr-title">${name||esc(docType||'')}</div>`;
   const subParts = [docType, DB.meta.period, extra].filter(Boolean).map(esc);
-  if(subParts.length) h += `<div class="pr-sub">${subParts.join(' · ')}</div>`;
+  if(subParts.length) h += `<div class="pr-sub">${subParts.join('&nbsp;&nbsp;·&nbsp;&nbsp;')}</div>`;
+  h += `<div class="pr-rule"></div>`;
   return h;
 }
 function buildStatusPrint(){
@@ -1069,26 +1133,32 @@ function buildStatusPrint(){
 }
 function buildPrayPrint(){
   const list = sortedTargets();
-  const zoneSpans = computeSpans(list, t=>t.zone);
-  const leaderSpans = computeSpans(list, t=> t.zone+'||'+t.leader);
+  const half = Math.ceil(list.length/2);
+  function block(arr, startNo){
+    if(!arr.length) return '';
+    const zoneSpans = computeSpans(arr, t=>t.zone);
+    const leaderSpans = computeSpans(arr, t=> t.zone+'||'+t.leader);
+    let b = `<table class="pr"><colgroup><col style="width:11%"><col style="width:19%"><col style="width:24%"><col style="width:17%"><col style="width:29%"></colgroup>
+      <thead><tr><th>번호</th><th>구역</th><th>인도자</th><th>관계</th><th>대상자</th></tr></thead><tbody>`;
+    arr.forEach((t,i)=>{
+      b += `<tr><td>${startNo+i}</td>`;
+      if(zoneSpans[i]>0) b += `<td rowspan="${zoneSpans[i]}">${esc(t.zone)}</td>`;
+      if(leaderSpans[i]>0) b += `<td rowspan="${leaderSpans[i]}">${esc(t.leader)}</td>`;
+      b += `<td>${esc(t.relation)}</td><td class="nm">${esc(t.name)}</td></tr>`;
+    });
+    return b + `</tbody></table>`;
+  }
   let h = prTitle('기도 명단', `총 ${list.length}명`);
-  h += `<table class="pr"><colgroup><col style="width:9%"><col style="width:17%"><col style="width:23%"><col style="width:17%"><col style="width:34%"></colgroup>
-    <thead><tr><th>번호</th><th>구역</th><th>인도자</th><th>관계</th><th>대상자</th></tr></thead><tbody>`;
-  list.forEach((t,idx)=>{
-    h += `<tr><td>${idx+1}</td>`;
-    if(zoneSpans[idx]>0) h += `<td rowspan="${zoneSpans[idx]}">${esc(t.zone)}</td>`;
-    if(leaderSpans[idx]>0) h += `<td rowspan="${leaderSpans[idx]}">${esc(t.leader)}</td>`;
-    h += `<td>${esc(t.relation)}</td><td class="nm">${esc(t.name)}</td></tr>`;
-  });
-  h += `</tbody></table>`;
+  h += `<div class="pr-split"><div>${block(list.slice(0,half),1)}</div><div>${block(list.slice(half),half+1)}</div></div>`;
   return h;
 }
 function buildPlanPrint(){
   const p = DB.plan;
   const name = [esc(DB.meta.churchName||''), esc(DB.meta.title||'')].filter(Boolean).join(' ');
   let h = `<div class="pr-title">${name||'집회 계획'}</div>`;
-  const sub = [esc(DB.meta.period||''), DB.meta.pastor?('강사 '+esc(DB.meta.pastor)):''].filter(Boolean).join(' · ');
+  const sub = [esc(DB.meta.period||''), DB.meta.pastor?('강사 '+esc(DB.meta.pastor)):''].filter(Boolean).join('&nbsp;&nbsp;·&nbsp;&nbsp;');
   if(sub) h += `<div class="pr-sub">${sub}</div>`;
+  h += `<div class="pr-rule"></div>`;
   (p.topNotes||[]).forEach(n=>{ if(n) h += `<div class="pr-note">${esc(n)}</div>`; });
   h += buildPlanGrid(true);
   return h;
@@ -1162,26 +1232,22 @@ function buildPrint(view){
 /* 인쇄: 앱 CSS와 독립된 iframe 문서로 인쇄 (모바일 호환 + 빈화면 방지) */
 function printCSS(orient){
   return `
-    @page { size:A4 ${orient}; margin:${orient==='landscape'?'8mm':'10mm'}; }
+    @page { size:A4 ${orient}; margin:${orient==='landscape'?'10mm':'12mm'}; }
     * { box-sizing:border-box; }
-    body { font-family:'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif; margin:0; color:#000; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-    .pr-title { text-align:center; font-size:17px; font-weight:800; margin:0 0 3px; }
-    .pr-sub { text-align:center; font-size:11.5px; margin:0 0 8px; color:#333; }
-    .pr-note { font-size:10px; margin:0 0 3px; line-height:1.45; text-align:left; }
-    table.pr { border-collapse:collapse; width:100%; table-layout:fixed; border:2.2px solid #000; }
-    table.pr th, table.pr td { border:1px solid #000; padding:3px 3px; text-align:center; font-size:10px; color:#000; word-break:keep-all; vertical-align:middle; }
-    table.pr th { background:#e8e8e8; font-weight:700; }
-    table.pr td.nm { font-weight:700; font-size:11px; }
-    table.pr td.lb { background:#f1f1f1; font-weight:700; text-align:center; }
-    table.pr td.sum { background:#f1f1f1; font-weight:700; }
+    body { font-family:'Pretendard Variable',Pretendard,'Apple SD Gothic Neo','Malgun Gothic',sans-serif; margin:0; color:#1b1f2e; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .pr-title { text-align:center; font-size:19px; font-weight:800; letter-spacing:-.01em; margin:0 0 3px; color:#101631; }
+    .pr-sub { text-align:center; font-size:11.5px; font-weight:500; letter-spacing:.01em; margin:0 0 2px; color:#6b7280; }
+    .pr-rule { width:48px; height:2.5px; background:#c79a3c; border-radius:2px; margin:7px auto 13px; }
+    .pr-note { font-size:10px; color:#374151; margin:0 0 4px; line-height:1.5; }
+    table.pr { border-collapse:collapse; width:100%; table-layout:fixed; border:1.7px solid #101631; }
+    table.pr th, table.pr td { border:.7px solid #c2c7d2; padding:4px 4px; text-align:center; font-size:10px; color:#1b1f2e; word-break:keep-all; vertical-align:middle; line-height:1.38; }
+    table.pr thead th { background:#101631; color:#fff; font-weight:700; letter-spacing:.02em; border-color:#101631; padding:5px 4px; }
+    table.pr td.nm { font-weight:700; font-size:11px; color:#101631; }
+    table.pr td.lb { background:#f2f4f9; font-weight:700; color:#2c3350; }
+    table.pr td.sum { background:#e9ecf5; font-weight:700; color:#101631; }
     table.pr td.mv { text-align:center; }
-    .pr-split { display:flex; gap:10px; align-items:flex-start; }
-    .pr-split > div { flex:1; }
-    .cdiag-pr { text-align:center; margin:0 0 8px; }
-    .cdiag-pr .cd-stage { font-size:9px; color:#333; margin-bottom:4px; }
-    .cdiag-pr .cd-table { display:inline-block; border:1.5px solid #000; padding:5px 34px; font-weight:700; font-size:11px; }
-    .cdiag-pr .cd-divs { display:flex; gap:6px; justify-content:center; margin-top:5px; }
-    .cdiag-pr .cd-dv { border:1px solid #000; padding:3px 14px; font-size:10px; }`;
+    .pr-split { display:flex; gap:13px; align-items:flex-start; }
+    .pr-split > div { flex:1; }`;
 }
 function doPrint(view){
   const orient = (view==='pray'||view==='chan') ? 'portrait' : 'landscape';
@@ -1195,7 +1261,7 @@ function doPrint(view){
     .pa-bar .go{background:#1b244c;color:#fff;border-color:#1b244c;}
     .pa-page{background:#fff;margin:14px auto;padding:14mm 10mm;max-width:${orient==='landscape'?'297mm':'210mm'};box-shadow:0 2px 12px rgba(0,0,0,.18);}
     @media print { .pa-bar{display:none!important;} html,body{background:#fff;} .pa-page{margin:0;padding:0;box-shadow:none;max-width:none;} }`;
-  const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>${printCSS(orient)}${screenCSS}</style></head><body><div class="pa-bar"><button class="go" onclick="window.print()">🖨 인쇄 / 저장</button><button onclick="window.close()">닫기</button></div><div class="pa-page">${inner}</div><script>window.addEventListener('load',function(){setTimeout(function(){try{window.focus();window.print();}catch(e){}} ,500);});<\/script></body></html>`;
+  const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"><style>${printCSS(orient)}${screenCSS}</style></head><body><div class="pa-bar"><button class="go" onclick="window.print()">🖨 인쇄 / 저장</button><button onclick="window.close()">닫기</button></div><div class="pa-page">${inner}</div><script>window.addEventListener('load',function(){setTimeout(function(){try{window.focus();window.print();}catch(e){}} ,500);});<\/script></body></html>`;
 
   // 1순위: 새 창 (모바일/웹뷰 호환, 실패 시 수동 인쇄 버튼 제공)
   let win = null;
@@ -1224,24 +1290,20 @@ async function exportImage(view){
   toast('이미지 만드는 중…');
   const orient = (view==='pray'||view==='chan') ? 'portrait' : 'landscape';
   const stage = document.createElement('div');
-  stage.style.cssText = `position:absolute; left:-99999px; top:0; background:#fff; color:#000; padding:18px; ${orient==='landscape'?'width:1400px':'width:900px'}; font-family:'Malgun Gothic','Apple SD Gothic Neo','Pretendard Variable',sans-serif;`;
+  stage.style.cssText = `position:absolute; left:-99999px; top:0; background:#fff; color:#1b1f2e; padding:26px 24px; ${orient==='landscape'?'width:1400px':'width:920px'}; font-family:'Pretendard Variable',Pretendard,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;`;
   stage.innerHTML = `<style>
-    .pr-title{text-align:center;font-size:22px;font-weight:800;margin:0 0 4px;color:#000}
-    .pr-sub{text-align:center;font-size:13px;margin:0 0 14px;color:#333}
-    table.pr{border-collapse:collapse;width:100%;table-layout:fixed;border:2.5px solid #000}
-    table.pr th,table.pr td{border:1px solid #000;padding:5px 4px;text-align:center;font-size:13px;color:#000;word-break:keep-all}
-    table.pr th{background:#e8e8e8;font-weight:700}
-    table.pr td.nm{font-weight:700}
-    table.pr td.lb,table.pr td.sum{background:#f1f1f1;font-weight:700}
-    table.pr td.lb{text-align:center}
+    .pr-title{text-align:center;font-size:27px;font-weight:800;letter-spacing:-.01em;margin:0 0 4px;color:#101631}
+    .pr-sub{text-align:center;font-size:14.5px;font-weight:500;margin:0 0 2px;color:#6b7280}
+    .pr-rule{width:62px;height:3px;background:#c79a3c;border-radius:2px;margin:11px auto 20px}
+    table.pr{border-collapse:collapse;width:100%;table-layout:fixed;border:2.2px solid #101631}
+    table.pr th,table.pr td{border:1px solid #c2c7d2;padding:7px 5px;text-align:center;font-size:13px;color:#1b1f2e;word-break:keep-all;vertical-align:middle;line-height:1.4}
+    table.pr thead th{background:#101631;color:#fff;font-weight:700;letter-spacing:.02em;border-color:#101631}
+    table.pr td.nm{font-weight:700;color:#101631}
+    table.pr td.lb{background:#f2f4f9;font-weight:700;color:#2c3350}
+    table.pr td.sum{background:#e9ecf5;font-weight:700;color:#101631}
     table.pr td.mv{text-align:center}
-    .pr-note{font-size:12px;color:#000;margin:0 0 4px;line-height:1.45}
-    .cdiag-pr{text-align:center;margin:0 0 10px}
-    .cdiag-pr .cd-stage{font-size:11px;color:#333;margin-bottom:6px}
-    .cdiag-pr .cd-table{display:inline-block;border:2px solid #000;padding:8px 50px;font-weight:700;font-size:15px}
-    .cdiag-pr .cd-divs{display:flex;gap:8px;justify-content:center;margin-top:8px}
-    .cdiag-pr .cd-dv{border:1px solid #000;padding:5px 22px;font-size:13px}
-    .pr-split{display:flex;gap:14px;align-items:flex-start}
+    .pr-note{font-size:12.5px;color:#374151;margin:0 0 5px;line-height:1.5}
+    .pr-split{display:flex;gap:18px;align-items:flex-start}
     .pr-split>div{flex:1}
   </style>` + buildPrint(view);
   document.body.appendChild(stage);
@@ -1366,21 +1428,31 @@ function openSettingsSheet(){
     <div class="list-row"><div class="lr-main"><div class="t">데이터 내보내기</div><div class="d">현재 집회를 JSON 파일로 저장</div></div><button class="btn btn-secondary btn-sm" id="s-export">내보내기</button></div>
     <div class="list-row"><div class="lr-main"><div class="t">데이터 가져오기</div><div class="d">JSON 파일에서 불러오기</div></div><button class="btn btn-secondary btn-sm" id="s-import">가져오기</button></div>
 
+    <div class="section-title">앱 공유하기</div>
+    <div class="list-row"><div class="lr-main"><div class="t">빈 앱 공유</div><div class="d">데이터 없이 앱만 다른 사람에게 공유</div></div><button class="btn btn-secondary btn-sm" id="s-shareapp">공유</button></div>
+
     <div class="section-title">앱 설치</div>
     <div class="muted" id="install-note">홈 화면에 설치하면 앱처럼 사용할 수 있어요. (브라우저 메뉴 → "홈 화면에 추가")</div>
   `;
+  const prevPeriod = m.period || '';
   openSheet('설정', body, ()=>{
     DB.meta.churchName = $('#s-church').value.trim();
     DB.meta.title = $('#s-title').value.trim() || '전도집회';
     DB.meta.period = $('#s-period').value.trim();
     DB.meta.pastor = $('#s-pastor').value.trim();
-    saveDB(); closeSheet(); render(); toast('설정이 저장됐어요');
+    // 기간이 바뀌면 집회계획 표의 날짜/요일을 자동 반영
+    let dateMsg = '';
+    if(DB.meta.period !== prevPeriod){
+      if(applyPeriodToPlan()) dateMsg = ' · 집회계획 날짜 반영됨';
+    }
+    saveDB(); closeSheet(); render(); toast('설정이 저장됐어요'+dateMsg);
   });
   renderZoneTags(); renderDayList(); renderSyncBox();
   $('#zone-add').onclick = ()=>{ const v=$('#zone-new').value.trim(); if(v && !DB.settings.zones.includes(v)){ DB.settings.zones.push(v); saveDB(); } $('#zone-new').value=''; renderZoneTags(); };
   $('#day-add').onclick = ()=>{ const v=$('#day-new').value.trim(); if(v){ DB.settings.days.push({label:v}); saveDB(); } $('#day-new').value=''; renderDayList(); };
   $('#s-export').onclick = exportJSON;
   $('#s-import').onclick = ()=> $('#jsonInput').click();
+  $('#s-shareapp').onclick = shareApp;
 }
 function renderZoneTags(){
   const box = $('#zone-tags'); if(!box) return;
