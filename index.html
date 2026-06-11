@@ -151,7 +151,7 @@ table.sx .sum td.aggdesc { color:var(--ink-soft); font-weight:600; font-size:11p
 
 /* ============ 기도명단 (화면 · 사진 서식 / 한 단) ============ */
 .pl-wrap { border:1px solid var(--line-soft); border-radius:14px; overflow:hidden; }
-table.pl { border-collapse:collapse; width:100%; font-size:14px; }
+table.pl { border-collapse:collapse; width:100%; font-size:14px; border:2px solid var(--line); }
 table.pl th, table.pl td { border-bottom:1px solid var(--line-soft); border-right:1px solid var(--line-soft); padding:9px 8px; text-align:center; background:var(--bg-1); vertical-align:middle; }
 table.pl thead th { background:var(--bg-2); color:var(--ink-soft); font-weight:600; font-size:12px; }
 table.pl td.no { color:var(--ink-mute); font-size:12px; width:40px; }
@@ -180,7 +180,7 @@ table.sx td.col-name.has-note { color:var(--gold-soft); }
 .plan-notes .pn { font-size:12.5px; color:var(--ink-soft); background:var(--bg-1); border:1px solid var(--line-soft); border-radius:9px; padding:7px 10px; white-space:pre-wrap; }
 .ptbl-scroll { overflow-x:auto; margin:0 -14px; padding:0 14px 8px; -webkit-overflow-scrolling:touch; }
 .ptbl-scroll::-webkit-scrollbar { height:7px; } .ptbl-scroll::-webkit-scrollbar-thumb { background:var(--line); border-radius:3px; }
-table.ptbl { border-collapse:collapse; width:max-content; min-width:100%; font-size:12px; }
+table.ptbl { border-collapse:collapse; width:max-content; min-width:100%; font-size:12px; border:2px solid var(--line); }
 table.ptbl th, table.ptbl td { border:1px solid var(--line-soft); padding:7px 7px; text-align:center; vertical-align:middle; word-break:keep-all; }
 table.ptbl thead th { background:var(--bg-2); color:var(--ink-soft); font-weight:700; white-space:nowrap; }
 table.ptbl td.cat { background:var(--bg-2); color:var(--gold-soft); font-weight:700; white-space:nowrap; }
@@ -209,7 +209,7 @@ table.ptbl tbody tr:active td { background:var(--bg-2); }
 .cdiag .cd-table { text-align:center; background:linear-gradient(180deg,var(--gold-soft),var(--gold)); color:#2A1F0A; font-weight:800; border-radius:10px; padding:9px 10px; max-width:340px; margin:0 auto; box-shadow:0 4px 12px rgba(255,200,87,.2); }
 .cdiag .cd-divs { display:flex; gap:8px; justify-content:center; margin-top:8px; }
 .cdiag .cd-dv { flex:1; max-width:84px; text-align:center; background:var(--bg-2); border:1px solid var(--line); border-radius:8px; padding:7px 4px; font-size:12px; color:var(--ink-soft); }
-table.cmap { border-collapse:collapse; width:max-content; min-width:100%; font-size:12.5px; }
+table.cmap { border-collapse:collapse; width:max-content; min-width:100%; font-size:12.5px; border:2px solid var(--line); }
 table.cmap th, table.cmap td { border:1px solid var(--line-soft); padding:8px 8px; text-align:center; vertical-align:middle; word-break:keep-all; }
 table.cmap thead th { background:var(--bg-2); color:var(--ink-soft); font-weight:700; white-space:nowrap; }
 table.cmap td.clbl { background:var(--bg-2); color:var(--gold-soft); font-weight:700; white-space:nowrap; }
@@ -364,7 +364,7 @@ const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<'
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역'];
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
 function defaultPlan(){
-  return JSON.parse('{"schema": 2, "title": "대전도집회 계획", "sub": "2026년 3월 9일(월) ~ 15일(주일), 오성용 목사", "topNotes": ["전도지: 50부 (미디어 선교부, 2월 22일(주일)까지)", "전도대상자 기도명단: 3월 8일(주일)까지", "대청소: 3월 8일(주일)", "대청소 분담 — 봉사회: 6층, 남자화장실(5,6층), 분리수거(3,5,6층) / 어머니회: 5층, 여자화장실(5,6층), 앞계단(난간,화분), 뒷계단 / 청년회: 3층(화장실 포함), 4층, 앞계단(쓸고 닦기)"], "dayLabels": ["9(월)", "10(화)", "11(수)", "12(목)", "13(금)", "14(토)"], "rows": [{"cat": "점심식사", "label": "담당", "mode": "days", "cells": ["-", "11구역", "김경영d", "김태봉d", "조돈걸d", ""], "value": ""}, {"cat": "점심식사", "label": "장소", "mode": "days", "cells": ["-", "달빛에구운고등어(괴정) 낙동대로 164", "제주복국(영도) 절영로 481", "바보낙지(영도) 해양로195번길 180 피아크 5층", "가정 학감대로49번길 62 107동 801호", ""], "value": ""}, {"cat": "봉사회", "label": "주차관리 (18:30~20:00)", "mode": "merged", "cells": [], "value": "교회당: 김진의b / 외부 주차장: 최대연b"}, {"cat": "봉사회", "label": "대강당 안내 (18:50~19:30) · 분리수거", "mode": "days", "cells": ["", "", "", "", "", ""], "value": ""}, {"cat": "어머니회", "label": "저녁식사 (18:00~19:20) · 식당 청소", "mode": "days", "cells": ["21,23조", "11조", "12조", "13조", "31조", "22,32조"], "value": ""}, {"cat": "어머니회", "label": "강사 식사", "mode": "days", "cells": ["한상련s,박소윤s", "심정숙s,진선정s", "박준심s,박소윤s", "심정숙s,최지인s", "한상련s,박소윤s", "박준심s,진선정s"], "value": ""}, {"cat": "어머니회", "label": "강사 음료", "mode": "merged", "cells": [], "value": "이혜숙s,이미정s"}, {"cat": "어머니회", "label": "강사 숙소", "mode": "merged", "cells": [], "value": "윤영매s,이혜은s,박주연s,유현옥s"}, {"cat": "어머니회", "label": "영유아 봉사", "mode": "days", "cells": ["전송이s,허원빈s", "양다슬s,고여정s", "이혜은s,전송이s", "박주연s,고여정s", "양다슬s,이혜은s", "허원빈s,박주연s"], "value": ""}, {"cat": "청년회", "label": "칠판 정리", "mode": "merged", "cells": [], "value": "강보라s,윤진서s"}, {"cat": "청년회", "label": "유초등부 봉사", "mode": "days", "cells": ["이화준b", "이보예s", "박형찬b", "김수진s", "강민성b", "안보현s"], "value": ""}, {"cat": "화장실", "label": "5층(남/여)", "mode": "merged", "cells": [], "value": "성해범b / 지민경s,편수인s"}, {"cat": "화장실", "label": "6층(남/여)", "mode": "merged", "cells": [], "value": "김동준b / 서희영s,주찬미s"}, {"cat": "", "label": "강사 노트북 설치 · 마이크 테스트", "mode": "merged", "cells": [], "value": "방송실"}, {"cat": "", "label": "찬양 인도", "mode": "merged", "cells": [], "value": "최성호b(정), 엄태홍b(부)"}, {"cat": "", "label": "반주", "mode": "merged", "cells": [], "value": "이경은s"}, {"cat": "", "label": "사회", "mode": "merged", "cells": [], "value": "최영운p"}, {"cat": "", "label": "특송", "mode": "days", "cells": ["전체 찬양 “주님의 선물”", "자매 중창(은264장) “들풀에 깃든 사랑”", "자매 중창 “참 좋으신 주님”", "형제 중창 “너 예수께 조용히 나가”", "형제 중창 “돌아온 탕자”", "전체 찬양(은8장) “그가 찔리고 상하심은”"], "value": ""}, {"cat": "", "label": "전도대상자 참석현황 집계", "mode": "merged", "cells": [], "value": "최대연b"}, {"cat": "", "label": "카톡 올리기", "mode": "merged", "cells": [], "value": "김태송b"}, {"cat": "", "label": "성찬위원", "mode": "merged", "cells": [], "value": "조돈걸d, 김태봉d, 김진열d, 조성영b, 이정훈b, 김경영d, 서만영b, 김태송b, 엄태홍b, 이원식b, 최은석b, 최대연b, 이승률b, 이윤섭b, 최영준b, 박진형d, 지관철b, 전성문b, 김현철b"}]}');
+  return JSON.parse('{"schema": 2, "title": "대전도집회 계획", "sub": "2026년 3월 9일(월) ~ 15일(주일), 오성용 목사", "topNotes": ["전도지: 50부 (미디어 선교부, 2월 22일(주일)까지)", "전도대상자 기도명단: 3월 8일(주일)까지", "대청소: 3월 8일(주일)", "대청소 분담 — 봉사회: 6층, 남자화장실(5,6층), 분리수거(3,5,6층) / 어머니회: 5층, 여자화장실(5,6층), 앞계단(난간,화분), 뒷계단 / 청년회: 3층(화장실 포함), 4층, 앞계단(쓸고 닦기)"], "dayLabels": ["9(월)", "10(화)", "11(수)", "12(목)", "13(금)", "14(토)"], "rows": [{"cat": "점심식사", "label": "담당", "mode": "days", "cells": ["-", "11구역", "김경영d", "김태봉d", "조돈걸d", ""], "value": ""}, {"cat": "점심식사", "label": "장소", "mode": "days", "cells": ["-", "\u201c달빛에구운고등어\u201d(괴정) 낙동대로 164", "\u201c제주복국\u201d(영도) 절영로 481", "\u201c바보낙지\u201d(영도) 해양로195번길 180 피아크 5층", "가정 학감대로49번길 62 107동 801호", ""], "value": ""}, {"cat": "봉사회", "label": "주차관리 (18:30~20:00)", "mode": "merged", "cells": [], "value": "교회당: 김진의b / 외부 주차장: 최대연b"}, {"cat": "봉사회", "label": "대강당 안내 (18:50~19:30) · 분리수거", "mode": "days", "cells": ["", "", "", "", "", ""], "value": ""}, {"cat": "어머니회", "label": "저녁식사 (18:00~19:20) · 식당 청소", "mode": "days", "cells": ["21,23조", "11조", "12조", "13조", "31조", "22,32조"], "value": ""}, {"cat": "어머니회", "label": "강사 식사", "mode": "days", "cells": ["한상련s,박소윤s", "심정숙s,진선정s", "박준심s,박소윤s", "심정숙s,최지인s", "한상련s,박소윤s", "박준심s,진선정s"], "value": ""}, {"cat": "어머니회", "label": "강사 음료", "mode": "merged", "cells": [], "value": "이혜숙s,이미정s"}, {"cat": "어머니회", "label": "강사 숙소", "mode": "merged", "cells": [], "value": "윤영매s,이혜은s,박주연s,유현옥s"}, {"cat": "어머니회", "label": "영유아 봉사", "mode": "days", "cells": ["전송이s,허원빈s", "양다슬s,고여정s", "이혜은s,전송이s", "박주연s,고여정s", "양다슬s,이혜은s", "허원빈s,박주연s"], "value": ""}, {"cat": "청년회", "label": "칠판 정리", "mode": "merged", "cells": [], "value": "강보라s,윤진서s"}, {"cat": "청년회", "label": "유초등부 봉사", "mode": "days", "cells": ["이화준b", "이보예s", "박형찬b", "김수진s", "강민성b", "안보현s"], "value": ""}, {"cat": "화장실", "label": "5층(남/여)", "mode": "merged", "cells": [], "value": "성해범b / 지민경s,편수인s"}, {"cat": "화장실", "label": "6층(남/여)", "mode": "merged", "cells": [], "value": "김동준b / 서희영s,주찬미s"}, {"cat": "", "label": "강사 노트북 설치 · 마이크 테스트", "mode": "merged", "cells": [], "value": "방송실"}, {"cat": "", "label": "찬양 인도", "mode": "merged", "cells": [], "value": "최성호b(정), 엄태홍b(부)"}, {"cat": "", "label": "반주", "mode": "merged", "cells": [], "value": "이경은s"}, {"cat": "", "label": "사회", "mode": "merged", "cells": [], "value": "최영운p"}, {"cat": "", "label": "특송", "mode": "days", "cells": ["전체 찬양 “주님의 선물”", "자매 중창(은264장) “들풀에 깃든 사랑”", "자매 중창 “참 좋으신 주님”", "형제 중창 “너 예수께 조용히 나가”", "형제 중창 “돌아온 탕자”", "전체 찬양(은8장) “그가 찔리고 상하심은”"], "value": ""}, {"cat": "", "label": "전도대상자 참석현황 집계", "mode": "merged", "cells": [], "value": "최대연b"}, {"cat": "", "label": "카톡 올리기", "mode": "merged", "cells": [], "value": "김태송b"}, {"cat": "", "label": "성찬위원", "mode": "merged", "cells": [], "value": "조돈걸d, 김태봉d, 김진열d, 조성영b, 이정훈b, 김경영d, 서만영b, 김태송b, 엄태홍b, 이원식b, 최은석b, 최대연b, 이승률b, 이윤섭b, 최영준b, 박진형d, 지관철b, 전성문b, 김현철b"}]}');
 }
 function migratePlan(plan){
   if(!plan || plan.schema!==2) return defaultPlan();
@@ -415,7 +415,10 @@ function hydrateEvent(ev){
   if(!Array.isArray(ev.settings.zones) || !ev.settings.zones.length) ev.settings.zones = DEFAULT_ZONES.slice();
   if(!Array.isArray(ev.settings.days) || !ev.settings.days.length) ev.settings.days = defaultDays();
   ev.targets = Array.isArray(ev.targets) ? ev.targets : [];
-  ev.targets.forEach(t=>{ if(!t.attend) t.attend = {}; });
+  ev.targets.forEach(t=>{
+    if(!t.attend) t.attend = {};
+    if(t.enrolled===undefined) t.enrolled = Object.keys(t.attend).some(k=>{ const a=t.attend[k]||{}; return a.on||a.off; });
+  });
   ev.plan = migratePlan(ev.plan);
   ev.chanmap = migrateChan(ev.chanmap);
   if(ev.roomCode===undefined) ev.roomCode = null;
@@ -457,6 +460,8 @@ function sortedTargets(){
     .sort((a,b)=> zoneIndex(a.t.zone)-zoneIndex(b.t.zone) || a.i-b.i)
     .map(x=>x.t);
 }
+/* 전도현황 명단 = 기도명단에서 '참석' 체크(등록)된 대상자만 */
+function enrolledTargets(){ return sortedTargets().filter(t=> t.enrolled); }
 function computeSpans(list, keyFn, allowEmpty){
   const out = new Array(list.length).fill(0); let i=0;
   while(i<list.length){
@@ -516,11 +521,11 @@ function refreshTopbar(){
 
 /* ----- 전도현황 ----- */
 function renderStatus(){
-  const list = sortedTargets();
+  const list = enrolledTargets();
   const days = DB.settings.days;
   let html = `
    <div class="view-head">
-     <div class="vt">전도 현황<small>대상자 ${list.length}명 · ${days.length}일</small></div>
+     <div class="vt">전도 현황<small>참석 ${list.length}명 · ${days.length}일</small></div>
      <div class="view-actions">
        <button class="btn btn-secondary btn-sm" data-act="photo-status">📷 사진</button>
        <button class="btn btn-secondary btn-sm" data-act="print-status">🖨 인쇄</button>
@@ -529,7 +534,7 @@ function renderStatus(){
    <div class="legend"><span>참석 표시: <b>○</b></span><span><b>온</b> 온라인</span><span><b>오프</b> 오프라인</span><span class="muted">날짜 칸을 눌러 체크 · 이름을 누르면 상태 입력</span></div>`;
 
   if(!list.length){
-    return html + `<div class="empty-state">아직 대상자가 없습니다.<br>오른쪽 아래 <b>＋</b> 버튼으로 추가하세요.</div>`;
+    return html + `<div class="empty-state">아직 등록된 대상자가 없습니다.<br><b>기도명단</b>에서 참석을 체크하면 여기에 나타납니다.</div>`;
   }
 
   let head = `<thead>
@@ -557,32 +562,36 @@ function renderStatus(){
     body += `</tr>`;
   });
   // 합계
-  const st = attStats(list);
-  // 당일 참석계: 날짜별 온/오프
-  let r1 = `<tr class="sum"><td class="col-no"></td><td class="col-name">당일 참석계</td><td colspan="3" class="aggdesc">온 / 오프</td>`;
-  st.daily.forEach(x=>{ r1 += `<td>${x.on}</td><td>${x.off}</td>`; });
-  body += r1 + `</tr>`;
-  // 전일 참석계: 그 날까지 매일 빠짐없이 오프 참석한 인원
-  let r2 = `<tr class="sum"><td class="col-no"></td><td class="col-name">전일 참석계</td><td colspan="3" class="aggdesc">매일 오프</td>`;
-  st.everyThrough.forEach(v=>{ r2 += `<td colspan="2">${v}</td>`; });
-  body += r2 + `</tr>`;
-  // 누적 참석계: 그 날까지 하루라도 오프 참석한 인원
-  let r3 = `<tr class="sum"><td class="col-no"></td><td class="col-name">누적 참석계</td><td colspan="3" class="aggdesc">하루라도 오프</td>`;
-  st.cumAny.forEach(v=>{ r3 += `<td colspan="2">${v}</td>`; });
-  body += r3 + `</tr>`;
+  body += statusSummaryRows(list);
   body += '</tbody>';
 
   return html + `<div class="tbl-scroll"><table class="sx">${head}${body}</table></div>`;
 }
+function statusSummaryRows(list){
+  const st = attStats(list);
+  let out = '';
+  // 당일 참석계: 날짜별 온/오프
+  let r1 = `<tr class="sum"><td class="col-no"></td><td class="col-name">당일 참석계</td><td colspan="3" class="aggdesc">온 / 오프</td>`;
+  st.daily.forEach(x=>{ r1 += `<td>${x.on}</td><td>${x.off}</td>`; });
+  out += r1 + `</tr>`;
+  // 전일 참석계: 그 날까지 매일 빠짐없이 오프 참석한 인원
+  let r2 = `<tr class="sum"><td class="col-no"></td><td class="col-name">전일 참석계</td><td colspan="3" class="aggdesc">매일 오프</td>`;
+  st.everyThrough.forEach(v=>{ r2 += `<td colspan="2">${v}</td>`; });
+  out += r2 + `</tr>`;
+  // 누적 참석계: 그 날까지 하루라도 오프 참석한 인원
+  let r3 = `<tr class="sum"><td class="col-no"></td><td class="col-name">누적 참석계</td><td colspan="3" class="aggdesc">하루라도 오프</td>`;
+  st.cumAny.forEach(v=>{ r3 += `<td colspan="2">${v}</td>`; });
+  out += r3 + `</tr>`;
+  return out;
+}
 
-/* ----- 기도명단 (사진 서식 · 한 단 · 구역/인도자 셀 병합) ----- */
+/* ----- 기도명단 (전체 명단 · 참석 체크 = 전도현황 등록) ----- */
 function renderPray(){
   const list = sortedTargets();
-  const days = DB.settings.days;
-  if(prayDay > days.length-1) prayDay = 0;
+  const enrolled = list.filter(t=> t.enrolled).length;
   let html = `
    <div class="view-head">
-     <div class="vt">기도 명단<small>대상자 ${list.length}명</small></div>
+     <div class="vt">기도 명단<small>대상자 ${list.length}명 · 참석 ${enrolled}명</small></div>
      <div class="view-actions">
        <button class="btn btn-secondary btn-sm" data-act="photo-pray">📷 사진</button>
        <button class="btn btn-secondary btn-sm" data-act="print-pray">🖨 인쇄</button>
@@ -591,25 +600,36 @@ function renderPray(){
   if(!list.length){
     return html + `<div class="empty-state">아직 대상자가 없습니다.<br>오른쪽 아래 <b>＋</b> 버튼으로 추가하세요.</div>`;
   }
-  const daySel = days.map((d,i)=> `<option value="${i}" ${i===prayDay?'selected':''}>${esc(d.label)}</option>`).join('');
-  html += `<div class="pray-toolbar"><span class="muted">참석 체크 기준일</span><select id="prayDaySel" class="pday">${daySel}</select><span class="muted">체크 시 전도현황(오프)에 반영</span></div>`;
+  html += `<div class="pray-toolbar"><span class="muted">참석 칸을 체크하면 <b>전도현황</b> 명단에 등록됩니다.</span></div>`;
   const zoneSpans = computeSpans(list, t=>t.zone);
   const leaderSpans = computeSpans(list, t=> t.zone+'||'+t.leader);
   let h = `<div class="pl-wrap"><table class="pl">
     <thead><tr><th>번호</th><th>구역</th><th>인도자</th><th>관계</th><th>대상자</th><th>참석</th></tr></thead><tbody>`;
   list.forEach((t,idx)=>{
-    const a = t.attend[prayDay] || {};
     h += `<tr data-edit="${t.id}"><td class="no">${idx+1}</td>`;
     if(zoneSpans[idx]>0) h += `<td class="zo" rowspan="${zoneSpans[idx]}">${esc(t.zone)}</td>`;
     if(leaderSpans[idx]>0) h += `<td class="ld" rowspan="${leaderSpans[idx]}">${esc(t.leader)}</td>`;
     h += `<td class="rel">${esc(t.relation)}</td><td class="nm">${esc(t.name)||'<span class="dim">이름</span>'}</td>`;
-    h += `<td class="chk ${a.off?'on':''}" data-attendchk="${t.id}"><span class="ck">${a.off?'✓':''}</span></td></tr>`;
+    h += `<td class="chk ${t.enrolled?'on':''}" data-attendchk="${t.id}"><span class="ck">${t.enrolled?'✓':''}</span></td></tr>`;
   });
   h += `</tbody></table></div>`;
   return html + h;
 }
 
 /* ----- 집회계획 ----- */
+// 따옴표(곡명·식당명 등) 문구는 줄바꿈하여 별도 행에 표시
+function planCell(v){
+  v = (v==null ? '' : String(v));
+  const m = v.match(/[“"][^”"]*[”"]/);
+  if(m){
+    const idx = v.indexOf(m[0]);
+    const before = v.slice(0, idx).replace(/\s+$/,'');
+    const quoted = m[0];
+    const after = v.slice(idx + m[0].length).replace(/^\s+/,'');
+    return [before, quoted, after].filter(s=> s!=='').map(esc).join('<br>');
+  }
+  return esc(v).replace(/\n/g, '<br>');
+}
 function buildPlanGrid(forPrint){
   const p = DB.plan;
   if(!p.rows.length || !p.dayLabels.length) return '';
@@ -635,9 +655,9 @@ function buildPlanGrid(forPrint){
       body += `<td class="${T.lbl2}" colspan="2">${esc(r.label)}</td>`;
     }
     if(r.mode==='merged'){
-      body += `<td class="${T.mv}" colspan="${nd}">${esc(r.value)}</td>`;
+      body += `<td class="${T.mv}" colspan="${nd}">${planCell(r.value)}</td>`;
     }else{
-      for(let di=0; di<nd; di++) body += `<td class="${T.cell}">${esc((r.cells||[])[di]||'')}</td>`;
+      for(let di=0; di<nd; di++) body += `<td class="${T.cell}">${planCell((r.cells||[])[di]||'')}</td>`;
     }
     body += `</tr>`;
   });
@@ -681,12 +701,10 @@ function bindView(){
   $$('#view [data-status]').forEach(el=> el.onclick = ()=>{
     const t = DB.targets.find(x=>x.id===el.dataset.status); if(t) openStatusPopup(t);
   });
-  // 기도명단 참석 체크 → 전도현황 반영 (행 편집과 분리)
+  // 기도명단 참석 체크 → 전도현황 등록 (행 편집과 분리)
   $$('#view [data-attendchk]').forEach(el=> el.onclick = (e)=>{
     e.stopPropagation(); togglePrayAttend(el.dataset.attendchk);
   });
-  // 기도명단 기준일 선택
-  const pd = $('#prayDaySel'); if(pd) pd.onchange = ()=>{ prayDay = +pd.value; rerenderPreserve(); };
   // 편집 진입 (대상자) — 기도명단 행 등
   $$('#view [data-edit]').forEach(el=> el.onclick = (e)=>{
     if(e.target.closest('.tap') || e.target.closest('[data-attendchk]')) return;
@@ -721,24 +739,46 @@ function rerenderPreserve(){
   window.scrollTo(0, y);
 }
 
-/* 대상자 토글 (즉시 저장, 체크한 자리 유지) */
+/* 전도현황 합계행만 다시 계산해 교체 (표 스크롤 유지) */
+function refreshStatusSummary(){
+  const tbody = $('#view table.sx tbody'); if(!tbody) return;
+  $$('#view table.sx tr.sum').forEach(r=> r.remove());
+  tbody.insertAdjacentHTML('beforeend', statusSummaryRows(enrolledTargets()));
+}
+
+/* 대상자 토글 — 해당 칸만 제자리 갱신 (스크롤 위치 그대로) */
 function toggleAttend(id, dayIdx, mode){
   const t = DB.targets.find(x=>x.id===id); if(!t) return;
   if(!t.attend[dayIdx]) t.attend[dayIdx] = {};
   t.attend[dayIdx][mode] = !t.attend[dayIdx][mode];
   saveDB();
-  rerenderPreserve();
+  const on = t.attend[dayIdx][mode];
+  const cell = document.querySelector(`#view td.tap[data-tap="${id}"][data-day="${dayIdx}"][data-mode="${mode}"]`);
+  if(cell){
+    cell.classList.toggle('hit', !!on);
+    cell.classList.toggle('dim', !on);
+    const mk = cell.querySelector('.mk'); if(mk) mk.textContent = on ? '○' : '·';
+  } else {
+    rerenderPreserve(); return;
+  }
+  refreshStatusSummary();
 }
 
-/* 기도명단 참석 체크 → 전도현황(선택 일자, 오프라인)에 반영 */
-let prayDay = 0;
+/* 기도명단 참석 체크 → 전도현황 등록 토글 (해당 칸만 갱신) */
 function togglePrayAttend(id){
   const t = DB.targets.find(x=>x.id===id); if(!t) return;
-  const di = Math.min(prayDay, Math.max(0, DB.settings.days.length-1));
-  if(!t.attend[di]) t.attend[di] = {};
-  t.attend[di].off = !t.attend[di].off;
+  t.enrolled = !t.enrolled;
   saveDB();
-  rerenderPreserve();
+  const cell = document.querySelector(`#view td.chk[data-attendchk="${id}"]`);
+  if(cell){
+    cell.classList.toggle('on', !!t.enrolled);
+    const ck = cell.querySelector('.ck'); if(ck) ck.textContent = t.enrolled ? '✓' : '';
+    // 헤더 카운트 갱신
+    const vt = $('#view .view-head .vt small');
+    if(vt){ const total=DB.targets.length, en=DB.targets.filter(x=>x.enrolled).length; vt.textContent = `대상자 ${total}명 · 참석 ${en}명`; }
+  } else {
+    rerenderPreserve();
+  }
 }
 
 /* 전도현황: 이름 탭 → 상태(메모) 팝업 */
@@ -840,7 +880,7 @@ function openTargetSheet(target, isNew){
 }
 $('#fab').onclick = ()=>{
   if(currentTab==='plan') return;
-  openTargetSheet({ id:uid(), zone:'', leader:'', relation:'', name:'', note:'', attend:{} }, true);
+  openTargetSheet({ id:uid(), zone:'', leader:'', relation:'', name:'', note:'', attend:{}, enrolled: currentTab==='status' }, true);
 };
 
 /* =================================================================
@@ -992,7 +1032,7 @@ function prTitle(docType, extra){
   return h;
 }
 function buildStatusPrint(){
-  const list = sortedTargets(); const days = DB.settings.days;
+  const list = enrolledTargets(); const days = DB.settings.days;
   const zoneSpans = computeSpans(list, t=>t.zone);
   const leaderSpans = computeSpans(list, t=> t.zone+'||'+t.leader);
   let h = prTitle('전도 현황');
@@ -1085,8 +1125,6 @@ function buildChanGrid(forPrint){
 function buildChanPrint(){
   const c = DB.chanmap;
   let h = prTitle(c.title||'성찬위원 배치도');
-  h += buildChanDiagram(true);
-  h += `<div style="height:8px"></div>`;
   h += buildChanGrid(true);
   (c.notes||[]).forEach(n=>{ if(n) h += `<div class="pr-note">${esc(n)}</div>`; });
   return h;
@@ -1105,9 +1143,8 @@ function renderChan(){
         <button class="btn btn-secondary btn-sm" data-act="photo-chan">📷 사진</button>
         <button class="btn btn-secondary btn-sm" data-act="print-chan">🖨 인쇄</button>
       </div></div>`;
-  h += buildChanDiagram(false);
   const grid = buildChanGrid(false);
-  if(grid) h += `<div class="ptbl-scroll" style="margin-top:10px">${grid}</div><div class="muted" style="margin-top:4px">표를 누르면 편집할 수 있어요.</div>`;
+  if(grid) h += `<div class="ptbl-scroll" style="margin-top:6px">${grid}</div><div class="muted" style="margin-top:4px">표를 누르면 편집할 수 있어요.</div>`;
   if(c.notes && c.notes.some(n=>n)){
     h += `<div class="plan-notes" style="margin-top:10px">`;
     c.notes.forEach(n=>{ if(n) h += `<div class="pn">${esc(n)}</div>`; });
@@ -1131,7 +1168,7 @@ function printCSS(orient){
     .pr-title { text-align:center; font-size:17px; font-weight:800; margin:0 0 3px; }
     .pr-sub { text-align:center; font-size:11.5px; margin:0 0 8px; color:#333; }
     .pr-note { font-size:10px; margin:0 0 3px; line-height:1.45; text-align:left; }
-    table.pr { border-collapse:collapse; width:100%; table-layout:fixed; }
+    table.pr { border-collapse:collapse; width:100%; table-layout:fixed; border:2.2px solid #000; }
     table.pr th, table.pr td { border:1px solid #000; padding:3px 3px; text-align:center; font-size:10px; color:#000; word-break:keep-all; vertical-align:middle; }
     table.pr th { background:#e8e8e8; font-weight:700; }
     table.pr td.nm { font-weight:700; font-size:11px; }
@@ -1150,26 +1187,35 @@ function doPrint(view){
   const orient = (view==='pray'||view==='chan') ? 'portrait' : 'landscape';
   let inner = '';
   try { inner = buildPrint(view); } catch(e){ console.error(e); toast('인쇄 내용을 만들 수 없어요'); return; }
-  const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>인쇄</title><style>${printCSS(orient)}</style></head><body>${inner}</body></html>`;
-  const old = document.getElementById('printFrame'); if(old) old.remove();
-  const ifr = document.createElement('iframe');
-  ifr.id = 'printFrame';
-  ifr.setAttribute('aria-hidden','true');
-  ifr.style.cssText = 'position:fixed; right:0; bottom:0; width:0; height:0; border:0; opacity:0;';
-  document.body.appendChild(ifr);
-  const run = ()=>{
-    try{
-      const w = ifr.contentWindow;
-      w.focus();
-      w.print();
-    }catch(e){ console.error(e); toast('인쇄를 시작할 수 없어요'); }
-    setTimeout(()=>{ try{ ifr.remove(); }catch(e){} }, 1500);
-  };
-  const d = ifr.contentWindow.document;
-  d.open(); d.write(html); d.close();
-  // 렌더 완료 후 인쇄
-  if(ifr.contentWindow.document.readyState === 'complete') setTimeout(run, 350);
-  else ifr.onload = ()=> setTimeout(run, 350);
+  const title = ({status:'전도현황', pray:'기도명단', plan:'집회계획', chan:'성찬위원배치도'}[view]) || '인쇄';
+  const screenCSS = `
+    html,body{background:#f3f4f6;}
+    .pa-bar{position:sticky;top:0;display:flex;gap:8px;justify-content:center;padding:10px;background:#fff;border-bottom:1px solid #ccc;}
+    .pa-bar button{font:600 14px/1 system-ui,sans-serif;padding:10px 18px;border-radius:10px;border:1px solid #bbb;background:#fff;cursor:pointer;}
+    .pa-bar .go{background:#1b244c;color:#fff;border-color:#1b244c;}
+    .pa-page{background:#fff;margin:14px auto;padding:14mm 10mm;max-width:${orient==='landscape'?'297mm':'210mm'};box-shadow:0 2px 12px rgba(0,0,0,.18);}
+    @media print { .pa-bar{display:none!important;} html,body{background:#fff;} .pa-page{margin:0;padding:0;box-shadow:none;max-width:none;} }`;
+  const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>${printCSS(orient)}${screenCSS}</style></head><body><div class="pa-bar"><button class="go" onclick="window.print()">🖨 인쇄 / 저장</button><button onclick="window.close()">닫기</button></div><div class="pa-page">${inner}</div><script>window.addEventListener('load',function(){setTimeout(function(){try{window.focus();window.print();}catch(e){}} ,500);});<\/script></body></html>`;
+
+  // 1순위: 새 창 (모바일/웹뷰 호환, 실패 시 수동 인쇄 버튼 제공)
+  let win = null;
+  try { win = window.open('', '_blank'); } catch(e){ win = null; }
+  if(win && win.document){
+    win.document.open(); win.document.write(html); win.document.close();
+    return;
+  }
+  // 2순위: 숨김 iframe
+  try{
+    const old = document.getElementById('printFrame'); if(old) old.remove();
+    const ifr = document.createElement('iframe');
+    ifr.id = 'printFrame';
+    ifr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;';
+    document.body.appendChild(ifr);
+    const idoc = ifr.contentWindow.document;
+    idoc.open(); idoc.write(html); idoc.close();
+    const run = ()=>{ try{ ifr.contentWindow.focus(); ifr.contentWindow.print(); }catch(e){ console.error(e); toast('이 화면에서는 인쇄가 지원되지 않아요. 사진 전송을 이용하거나 브라우저에서 열어 주세요'); } setTimeout(()=>{ try{ ifr.remove(); }catch(e){} }, 2000); };
+    setTimeout(run, 500);
+  }catch(e){ console.error(e); toast('이 화면에서는 인쇄가 지원되지 않아요. 사진 전송을 이용해 주세요'); }
 }
 
 /* 사진(PNG) 출력 — 오프스크린 라이트 테이블 + html2canvas */
@@ -1182,7 +1228,7 @@ async function exportImage(view){
   stage.innerHTML = `<style>
     .pr-title{text-align:center;font-size:22px;font-weight:800;margin:0 0 4px;color:#000}
     .pr-sub{text-align:center;font-size:13px;margin:0 0 14px;color:#333}
-    table.pr{border-collapse:collapse;width:100%;table-layout:fixed}
+    table.pr{border-collapse:collapse;width:100%;table-layout:fixed;border:2.5px solid #000}
     table.pr th,table.pr td{border:1px solid #000;padding:5px 4px;text-align:center;font-size:13px;color:#000;word-break:keep-all}
     table.pr th{background:#e8e8e8;font-weight:700}
     table.pr td.nm{font-weight:700}
