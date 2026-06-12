@@ -129,7 +129,7 @@ nav.tabbar {
 .tbl-scroll::-webkit-scrollbar { height:7px; }
 .tbl-scroll::-webkit-scrollbar-thumb { background:var(--line); border-radius:3px; }
 table.sx { border-collapse:separate; border-spacing:0; width:max-content; min-width:100%; font-size:13px; }
-table.sx th, table.sx td { border-bottom:1px solid var(--line-soft); border-right:1px solid var(--line-soft); padding:7px 6px; text-align:center; white-space:nowrap; background:var(--bg-1); }
+table.sx th, table.sx td { border-bottom:1px solid var(--line); border-right:1px solid var(--line); padding:7px 6px; text-align:center; white-space:nowrap; background:var(--bg-1); }
 table.sx thead th { background:var(--bg-2); color:var(--ink-soft); font-weight:600; font-size:12px; position:sticky; z-index:3; }
 table.sx thead tr:first-child th { top:0; height:32px; }
 table.sx thead tr:nth-child(2) th { top:32px; }
@@ -152,9 +152,9 @@ table.sx .sum td.aggdesc { color:var(--ink-soft); font-weight:600; font-size:11p
 .day-h .d2 { font-size:11px; color:var(--ink-mute); font-weight:500; }
 
 /* ============ 기도명단 (화면 · 사진 서식 / 한 단) ============ */
-.pl-wrap { border:1px solid var(--line-soft); border-radius:14px; overflow:auto; max-height:calc(100vh - 245px); max-height:calc(100dvh - 245px - var(--safe-top) - var(--safe-bot)); -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
+.pl-wrap { border:1px solid var(--line); border-radius:14px; overflow:auto; max-height:calc(100vh - 245px); max-height:calc(100dvh - 245px - var(--safe-top) - var(--safe-bot)); -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
 table.pl { border-collapse:collapse; width:100%; font-size:14px; border:2px solid var(--line); }
-table.pl th, table.pl td { border-bottom:1px solid var(--line-soft); border-right:1px solid var(--line-soft); padding:9px 8px; text-align:center; background:var(--bg-1); vertical-align:middle; }
+table.pl th, table.pl td { border-bottom:1px solid var(--line); border-right:1px solid var(--line); padding:9px 8px; text-align:center; background:var(--bg-1); vertical-align:middle; }
 table.pl thead th { background:var(--bg-2); color:var(--ink-soft); font-weight:600; font-size:12px; position:sticky; top:0; z-index:3; }
 table.pl td.no { color:var(--ink-mute); font-size:12px; width:40px; }
 table.pl td.zo { color:var(--ink-soft); font-weight:600; width:64px; }
@@ -202,7 +202,7 @@ html.fs-xl body { zoom:1.27; }
 .ptbl-scroll { overflow-x:auto; margin:0 -14px; padding:0 14px 8px; -webkit-overflow-scrolling:touch; }
 .ptbl-scroll::-webkit-scrollbar { height:7px; } .ptbl-scroll::-webkit-scrollbar-thumb { background:var(--line); border-radius:3px; }
 table.ptbl { border-collapse:collapse; width:max-content; min-width:100%; font-size:12px; border:2px solid var(--line); }
-table.ptbl th, table.ptbl td { border:1px solid var(--line-soft); padding:7px 7px; text-align:center; vertical-align:middle; word-break:keep-all; }
+table.ptbl th, table.ptbl td { border:1px solid var(--line); padding:7px 7px; text-align:center; vertical-align:middle; word-break:keep-all; }
 table.ptbl thead th { background:var(--bg-2); color:var(--ink-soft); font-weight:700; white-space:nowrap; }
 table.ptbl td.cat { background:var(--bg-2); color:var(--gold-soft); font-weight:700; white-space:nowrap; }
 table.ptbl td.lbl, table.ptbl td.lbl2 { background:var(--bg-1); color:var(--ink); font-weight:600; text-align:left; min-width:96px; }
@@ -231,7 +231,7 @@ table.ptbl tbody tr:active td { background:var(--bg-2); }
 .cdiag .cd-divs { display:flex; gap:8px; justify-content:center; margin-top:8px; }
 .cdiag .cd-dv { flex:1; max-width:84px; text-align:center; background:var(--bg-2); border:1px solid var(--line); border-radius:8px; padding:7px 4px; font-size:12px; color:var(--ink-soft); }
 table.cmap { border-collapse:collapse; width:max-content; min-width:100%; font-size:12.5px; border:2px solid var(--line); }
-table.cmap th, table.cmap td { border:1px solid var(--line-soft); padding:8px 8px; text-align:center; vertical-align:middle; word-break:keep-all; }
+table.cmap th, table.cmap td { border:1px solid var(--line); padding:8px 8px; text-align:center; vertical-align:middle; word-break:keep-all; }
 table.cmap thead th { background:var(--bg-2); color:var(--ink-soft); font-weight:700; white-space:nowrap; }
 table.cmap td.clbl { background:var(--bg-2); color:var(--gold-soft); font-weight:700; white-space:nowrap; }
 table.cmap td.ccell { background:var(--bg-1); color:var(--ink); min-width:72px; }
@@ -507,7 +507,7 @@ function filterBarHTML(){
   let h = `<div class="searchbar">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
     <input id="searchInput" placeholder="이름·인도자 검색" value="${esc(filterQ)}" autocomplete="off"/>
-    ${filterQ?'<button id="searchClear" class="sclr">✕</button>':''}</div>`;
+    <button id="searchClear" class="sclr" style="visibility:${filterQ?'visible':'hidden'}">✕</button></div>`;
   h += `<div class="zone-scroll"><button class="zone-pill ${!filterZone?'active':''}" data-zone="">전체</button>`;
   DB.settings.zones.forEach(z=>{ h += `<button class="zone-pill ${filterZone===z?'active':''}" data-zone="${esc(z)}">${esc(z)}</button>`; });
   h += `</div>`;
@@ -644,13 +644,15 @@ function refreshTopbar(){
 }
 
 /* ----- 전도현황 ----- */
+function statusSmallText(){
+  const all = enrolledTargets(), visible = statusVisible();
+  return `참석 ${all.length}명${(filterQ||filterZone)?` · 표시 ${visible.length}명`:''} · ${DB.settings.days.length}일`;
+}
 function renderStatus(){
   const all = enrolledTargets();
-  const visible = statusVisible();
-  const days = DB.settings.days;
   let html = `
    <div class="view-head">
-     <div class="vt">전도 현황<small>참석 ${all.length}명${(filterQ||filterZone)?` · 표시 ${visible.length}명`:''} · ${days.length}일</small></div>
+     <div class="vt">전도 현황<small id="vtSmall">${statusSmallText()}</small></div>
      <div class="view-actions">
        <button class="btn btn-secondary btn-sm" data-act="photo-status">📷 사진</button>
        <button class="btn btn-secondary btn-sm" data-act="print-status">🖨 인쇄</button>
@@ -662,8 +664,14 @@ function renderStatus(){
     return html + `<div class="empty-state">아직 등록된 대상자가 없습니다.<br><b>기도명단</b>에서 참석을 체크하면 여기에 나타납니다.</div>`;
   }
   html += filterBarHTML();
+  html += `<div id="listArea">` + statusListHTML() + `</div>`;
+  return html;
+}
+function statusListHTML(){
+  const visible = statusVisible();
+  const days = DB.settings.days;
   if(!visible.length){
-    return html + `<div class="empty-state">검색 결과가 없습니다.</div>`;
+    return `<div class="empty-state">검색 결과가 없습니다.</div>`;
   }
 
   let head = `<thead>
@@ -694,7 +702,7 @@ function renderStatus(){
   body += statusSummaryRows(visible.map(x=>x.t));
   body += '</tbody>';
 
-  return html + `<div class="tbl-scroll"><table class="sx">${head}${body}</table></div>`;
+  return `<div class="tbl-scroll"><table class="sx">${head}${body}</table></div>`;
 }
 function statusSummaryRows(list){
   const st = attStats(list);
@@ -715,12 +723,17 @@ function statusSummaryRows(list){
 }
 
 /* ----- 기도명단 (전체 명단 · 참석 체크 = 전도현황 등록) ----- */
-function renderPray(){
+function praySmallText(){
   const list = sortedTargets();
   const enrolled = list.filter(t=> t.enrolled).length;
+  const vis = prayVisible().length;
+  return `대상자 ${list.length}명 · 참석 ${enrolled}명${(filterQ||filterZone)?` · 표시 ${vis}명`:''}`;
+}
+function renderPray(){
+  const list = sortedTargets();
   let html = `
    <div class="view-head">
-     <div class="vt">기도 명단<small>대상자 ${list.length}명 · 참석 ${enrolled}명</small></div>
+     <div class="vt">기도 명단<small id="vtSmall">${praySmallText()}</small></div>
      <div class="view-actions">
        <button class="btn btn-secondary btn-sm" data-act="photo-pray">📷 사진</button>
        <button class="btn btn-secondary btn-sm" data-act="print-pray">🖨 인쇄</button>
@@ -730,11 +743,15 @@ function renderPray(){
     return html + `<div class="empty-state">아직 대상자가 없습니다.<br>오른쪽 아래 <b>＋</b> 버튼으로 추가하세요.</div>`;
   }
   html += filterBarHTML();
+  html += `<div id="listArea">` + prayListHTML() + `</div>`;
+  return html;
+}
+function prayListHTML(){
   const visible = prayVisible();
   if(!visible.length){
-    return html + `<div class="empty-state">검색 결과가 없습니다.</div>`;
+    return `<div class="empty-state">검색 결과가 없습니다.</div>`;
   }
-  html += `<div class="pray-toolbar"><span class="muted">참석 칸을 체크하면 <b>전도현황</b> 명단에 등록됩니다.</span></div>`;
+  let html = `<div class="pray-toolbar"><span class="muted">참석 칸을 체크하면 <b>전도현황</b> 명단에 등록됩니다.</span></div>`;
   const vts = visible.map(x=>x.t);
   const zoneSpans = computeSpans(vts, t=>t.zone);
   const leaderSpans = computeSpans(vts, t=> t.zone+'||'+t.leader);
@@ -837,18 +854,29 @@ function renderPlan(){
  * ================================================================= */
 function bindView(){
   $$('[data-act]').forEach(b=> b.onclick = ()=> handleAct(b.dataset.act));
-  // 검색·구역 필터
+  // 검색 — 입력창은 교체하지 않고 표 영역만 갱신 (한글 조합 보존)
   const si = $('#searchInput');
   if(si){
     si.oninput = ()=>{
       filterQ = si.value;
-      rerenderPreserve();
-      const s2 = $('#searchInput');
-      if(s2){ s2.focus(); const L=s2.value.length; try{ s2.setSelectionRange(L,L); }catch(e){} }
+      const sc0 = $('#searchClear'); if(sc0) sc0.style.visibility = filterQ ? 'visible' : 'hidden';
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(refreshListArea, 120);
     };
   }
-  const sc = $('#searchClear'); if(sc) sc.onclick = ()=>{ filterQ=''; rerenderPreserve(); };
-  $$('.zone-pill').forEach(p=> p.onclick = ()=>{ filterZone = p.dataset.zone || ''; rerenderPreserve(); });
+  const sc = $('#searchClear');
+  if(sc) sc.onclick = ()=>{
+    filterQ = '';
+    const s2 = $('#searchInput'); if(s2){ s2.value=''; s2.focus(); }
+    sc.style.visibility = 'hidden';
+    refreshListArea();
+  };
+  // 구역 필터 — 알약 줄은 그대로 두고(스크롤 유지) 활성 표시와 표만 갱신
+  $$('#view .zone-pill').forEach(p=> p.onclick = ()=>{
+    filterZone = p.dataset.zone || '';
+    $$('#view .zone-pill').forEach(x=> x.classList.toggle('active', (x.dataset.zone||'')===filterZone));
+    refreshListArea();
+  });
   // 전도현황 셀 토글
   $$('#view td.tap').forEach(td=> td.onclick = ()=> toggleAttend(td.dataset.tap, +td.dataset.day, td.dataset.mode));
   // 이름 탭 → 상태/메모 팝업 (전도현황·기도명단 공통)
@@ -884,14 +912,27 @@ function handleAct(a){
 }
 
 /* 화면 다시 그릴 때 스크롤 위치 유지 */
+/* 화면 다시 그릴 때 모든 스크롤 위치(가로·세로·구역 줄) 유지 */
 function rerenderPreserve(){
   const y = window.scrollY || window.pageYOffset || 0;
-  const sc = $('#view .tbl-scroll'); const sl = sc ? sc.scrollLeft : 0;
-  const pc = $('#view .ptbl-scroll'); const pl = pc ? pc.scrollLeft : 0;
+  const sels = ['.tbl-scroll', '.ptbl-scroll', '.pl-wrap', '.zone-scroll'];
+  const saved = sels.map(s=> $$('#view '+s).map(el=>({ l:el.scrollLeft, t:el.scrollTop })));
   render();
-  const sc2 = $('#view .tbl-scroll'); if(sc2) sc2.scrollLeft = sl;
-  const pc2 = $('#view .ptbl-scroll'); if(pc2) pc2.scrollLeft = pl;
+  sels.forEach((s,si)=> $$('#view '+s).forEach((el,i)=>{
+    const v = saved[si] && saved[si][i]; if(v){ el.scrollLeft=v.l; el.scrollTop=v.t; }
+  }));
   window.scrollTo(0, y);
+}
+
+/* 검색·구역 필터 변경 시 — 검색창/알약 줄은 그대로 두고 표 영역만 갱신 */
+let searchTimer = null;
+function refreshListArea(){
+  const host = $('#listArea');
+  if(!host){ rerenderPreserve(); return; }
+  host.innerHTML = (currentTab==='status') ? statusListHTML() : prayListHTML();
+  const sm = $('#vtSmall'); if(sm) sm.textContent = (currentTab==='status') ? statusSmallText() : praySmallText();
+  bindView();
+  fitScrollers();
 }
 
 /* 전도현황 합계행만 다시 계산해 교체 (표 스크롤 유지) */
