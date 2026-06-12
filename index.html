@@ -153,8 +153,8 @@ table.sx .sum td.aggdesc { color:var(--ink-soft); font-weight:600; font-size:11p
 
 /* ============ 기도명단 (화면 · 사진 서식 / 한 단) ============ */
 .pl-wrap { border:1px solid var(--line); border-radius:14px; overflow:auto; max-height:calc(100vh - 245px); max-height:calc(100dvh - 245px - var(--safe-top) - var(--safe-bot)); -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
-table.pl { border-collapse:collapse; width:100%; font-size:14px; border:2px solid var(--line); }
-table.pl th, table.pl td { border-bottom:1px solid var(--line); border-right:1px solid var(--line); padding:9px 8px; text-align:center; background:var(--bg-1); vertical-align:middle; }
+table.pl { border-collapse:collapse; width:max-content; min-width:100%; font-size:14px; border:2px solid var(--line); }
+table.pl th, table.pl td { border-bottom:1px solid var(--line); border-right:1px solid var(--line); padding:9px 10px; text-align:center; background:var(--bg-1); vertical-align:middle; white-space:nowrap; }
 table.pl thead th { background:var(--bg-2); color:var(--ink-soft); font-weight:600; font-size:12px; position:sticky; top:0; z-index:3; }
 table.pl td.no { color:var(--ink-mute); font-size:12px; width:40px; }
 table.pl td.zo { color:var(--ink-soft); font-weight:600; width:64px; }
@@ -386,7 +386,7 @@ const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<'
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역'];
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
 function defaultPlan(){
-  return JSON.parse('{"schema": 2, "title": "대전도집회 계획", "sub": "2026년 3월 9일(월) ~ 15일(주일), 오성용 목사", "topNotes": ["전도지: 50부 (미디어 선교부, 2월 22일(주일)까지)", "전도대상자 기도명단: 3월 8일(주일)까지", "대청소: 3월 8일(주일)", "대청소 분담 — 봉사회: 6층, 남자화장실(5,6층), 분리수거(3,5,6층) / 어머니회: 5층, 여자화장실(5,6층), 앞계단(난간,화분), 뒷계단 / 청년회: 3층(화장실 포함), 4층, 앞계단(쓸고 닦기)"], "dayLabels": ["9(월)", "10(화)", "11(수)", "12(목)", "13(금)", "14(토)"], "rows": [{"cat": "점심식사", "label": "담당", "mode": "days", "cells": ["-", "11구역", "김경영d", "김태봉d", "조돈걸d", ""], "value": ""}, {"cat": "점심식사", "label": "장소", "mode": "days", "cells": ["-", "\u201c달빛에구운고등어\u201d(괴정) 낙동대로 164", "\u201c제주복국\u201d(영도) 절영로 481", "\u201c바보낙지\u201d(영도) 해양로195번길 180 피아크 5층", "가정 학감대로49번길 62 107동 801호", ""], "value": ""}, {"cat": "봉사회", "label": "주차관리 (18:30~20:00)", "mode": "merged", "cells": [], "value": "교회당: 김진의b / 외부 주차장: 최대연b"}, {"cat": "봉사회", "label": "대강당 안내 (18:50~19:30) · 분리수거", "mode": "days", "cells": ["", "", "", "", "", ""], "value": ""}, {"cat": "어머니회", "label": "저녁식사 (18:00~19:20) · 식당 청소", "mode": "days", "cells": ["21,23조", "11조", "12조", "13조", "31조", "22,32조"], "value": ""}, {"cat": "어머니회", "label": "강사 식사", "mode": "days", "cells": ["한상련s,박소윤s", "심정숙s,진선정s", "박준심s,박소윤s", "심정숙s,최지인s", "한상련s,박소윤s", "박준심s,진선정s"], "value": ""}, {"cat": "어머니회", "label": "강사 음료", "mode": "merged", "cells": [], "value": "이혜숙s,이미정s"}, {"cat": "어머니회", "label": "강사 숙소", "mode": "merged", "cells": [], "value": "윤영매s,이혜은s,박주연s,유현옥s"}, {"cat": "어머니회", "label": "영유아 봉사", "mode": "days", "cells": ["전송이s,허원빈s", "양다슬s,고여정s", "이혜은s,전송이s", "박주연s,고여정s", "양다슬s,이혜은s", "허원빈s,박주연s"], "value": ""}, {"cat": "청년회", "label": "칠판 정리", "mode": "merged", "cells": [], "value": "강보라s,윤진서s"}, {"cat": "청년회", "label": "유초등부 봉사", "mode": "days", "cells": ["이화준b", "이보예s", "박형찬b", "김수진s", "강민성b", "안보현s"], "value": ""}, {"cat": "화장실", "label": "5층(남/여)", "mode": "merged", "cells": [], "value": "성해범b / 지민경s,편수인s"}, {"cat": "화장실", "label": "6층(남/여)", "mode": "merged", "cells": [], "value": "김동준b / 서희영s,주찬미s"}, {"cat": "", "label": "강사 노트북 설치 · 마이크 테스트", "mode": "merged", "cells": [], "value": "방송실"}, {"cat": "", "label": "찬양 인도", "mode": "merged", "cells": [], "value": "최성호b(정), 엄태홍b(부)"}, {"cat": "", "label": "반주", "mode": "merged", "cells": [], "value": "이경은s"}, {"cat": "", "label": "사회", "mode": "merged", "cells": [], "value": "최영운p"}, {"cat": "", "label": "특송", "mode": "days", "cells": ["전체 찬양 “주님의 선물”", "자매 중창(은264장) “들풀에 깃든 사랑”", "자매 중창 “참 좋으신 주님”", "형제 중창 “너 예수께 조용히 나가”", "형제 중창 “돌아온 탕자”", "전체 찬양(은8장) “그가 찔리고 상하심은”"], "value": ""}, {"cat": "", "label": "전도대상자 참석현황 집계", "mode": "merged", "cells": [], "value": "최대연b"}, {"cat": "", "label": "카톡 올리기", "mode": "merged", "cells": [], "value": "김태송b"}, {"cat": "", "label": "성찬위원", "mode": "merged", "cells": [], "value": "조돈걸d, 김태봉d, 김진열d, 조성영b, 이정훈b, 김경영d, 서만영b, 김태송b, 엄태홍b, 이원식b, 최은석b, 최대연b, 이승률b, 이윤섭b, 최영준b, 박진형d, 지관철b, 전성문b, 김현철b"}]}');
+  return JSON.parse('{"schema":2,"title":"대전도집회 계획","sub":"2026년 3월 9일(월) ~ 15일(주일), 오성용 목사","topNotes":[],"dayLabels":["1일","2일","3일","4일","5일","6일"],"rows":[{"cat":"점심식사","label":"담당","mode":"days","cells":["","","","","",""],"value":""},{"cat":"점심식사","label":"장소","mode":"days","cells":["","","","","",""],"value":""},{"cat":"봉사회","label":"주차관리 (18:30~20:00)","mode":"merged","cells":[],"value":""},{"cat":"봉사회","label":"대강당 안내 (18:50~19:30) · 분리수거","mode":"days","cells":["","","","","",""],"value":""},{"cat":"어머니회","label":"저녁식사 (18:00~19:20) · 식당 청소","mode":"days","cells":["","","","","",""],"value":""},{"cat":"어머니회","label":"강사 식사","mode":"days","cells":["","","","","",""],"value":""},{"cat":"어머니회","label":"강사 음료","mode":"merged","cells":[],"value":""},{"cat":"어머니회","label":"강사 숙소","mode":"merged","cells":[],"value":""},{"cat":"어머니회","label":"영유아 봉사","mode":"days","cells":["","","","","",""],"value":""},{"cat":"청년회","label":"칠판 정리","mode":"merged","cells":[],"value":""},{"cat":"청년회","label":"유초등부 봉사","mode":"days","cells":["","","","","",""],"value":""},{"cat":"화장실","label":"5층(남/여)","mode":"merged","cells":[],"value":""},{"cat":"화장실","label":"6층(남/여)","mode":"merged","cells":[],"value":""},{"cat":"","label":"강사 노트북 설치 · 마이크 테스트","mode":"merged","cells":[],"value":""},{"cat":"","label":"찬양 인도","mode":"merged","cells":[],"value":""},{"cat":"","label":"반주","mode":"merged","cells":[],"value":""},{"cat":"","label":"사회","mode":"merged","cells":[],"value":""},{"cat":"","label":"특송","mode":"days","cells":["","","","","",""],"value":""},{"cat":"","label":"전도대상자 참석현황 집계","mode":"merged","cells":[],"value":""},{"cat":"","label":"카톡 올리기","mode":"merged","cells":[],"value":""},{"cat":"","label":"성찬위원","mode":"merged","cells":[],"value":""}]}');
 }
 function migratePlan(plan){
   if(!plan || plan.schema!==2) return defaultPlan();
@@ -398,7 +398,7 @@ function migratePlan(plan){
   return plan;
 }
 function defaultChan(){
-  return JSON.parse('{"schema":1,"enabled":true,"title":"성찬위원 배치도","divisions":["1분단","2분단","3분단","4분단"],"roles":[{"label":"비닐장갑","cells":["전성문B","조성영B","최대연B","이원식B"]},{"label":"성찬 떡","cells":["김태봉D","조돈걸D","최영준B","이윤섭B"]},{"label":"포도주","cells":["엄태홍B","최은석B","김진열D","김태송B"]},{"label":"빈잔 수거","cells":["김경영D","박진형D","최대연B","이원식B"]}],"fixed":[{"label":"3층","value":"김현철B"},{"label":"5층","value":"이정훈B"}],"notes":["▶ 출발순서: 비닐장갑 → 성찬 떡 → 포도주 → 빈잔 수거","▶ 성찬보 담당: 최대연B, 김경영D","▶ 성찬떡 담당: 흰 장갑 위에 비닐장갑 착용","▶ 포도주 담당: 흰 장갑만 착용","# 성찬 테이블 준비: 최대연B, 조성영B","# 성찬 테이블 정리: 김태송B, 전성문B","※ 불참: 지관철B, 이승률B, 서만영B(방송)"]}');
+  return JSON.parse('{"schema":1,"enabled":true,"title":"성찬위원 배치도","divisions":["1분단","2분단","3분단","4분단"],"roles":[{"label":"비닐장갑","cells":["","","",""]},{"label":"성찬 떡","cells":["","","",""]},{"label":"포도주","cells":["","","",""]},{"label":"빈잔 수거","cells":["","","",""]}],"fixed":[{"label":"3층","value":""},{"label":"5층","value":""}],"notes":["▶ 출발순서: 비닐장갑 → 성찬 떡 → 포도주 → 빈잔 수거","▶ 성찬떡 담당: 흰 장갑 위에 비닐장갑 착용","▶ 포도주 담당: 흰 장갑만 착용"]}');
 }
 function migrateChan(c){
   if(!c || c.schema!==1) return defaultChan();
@@ -1541,13 +1541,19 @@ function switchEvent(id){
 }
 function addEvent(){
   const body = `<div class="field"><label>집회 이름</label><input id="ev-name" placeholder="예) 3월 대전도집회" autofocus/></div>
-    <div class="field"><label>교회 이름</label><input id="ev-church" value="${esc(DB.meta.churchName||'')}" placeholder="교회 이름"/></div>`;
+    <div class="field"><label>교회 이름</label><input id="ev-church" value="${esc(DB.meta.churchName||'')}" placeholder="교회 이름"/></div>
+    <div class="muted">집회 계획(배치도 포함)은 직전 집회 내용을 그대로 가져오고, 기도명단·전도현황은 비어 있는 상태로 시작합니다.</div>`;
   openSheet('새 집회 만들기', body, ()=>{
     const name = $('#ev-name').value.trim() || '전도집회';
     const fe = freshEvent(name); fe.meta.churchName = $('#ev-church').value.trim();
+    // 직전(현재) 집회의 계획·배치도를 그대로 이어받음 — 명단·출석은 비움
+    try{
+      if(DB && DB.plan) fe.plan = JSON.parse(JSON.stringify(DB.plan));
+      if(DB && DB.chanmap) fe.chanmap = JSON.parse(JSON.stringify(DB.chanmap));
+    }catch(e){}
     VAULT.events.push(fe); DB = fe; VAULT.activeId = fe.id; saveVault();
     syncAttachActive();
-    closeSheet(); setTab('status'); toast('새 집회가 생성됐어요');
+    closeSheet(); setTab('status'); toast('새 집회가 생성됐어요 (계획은 이전 집회에서 복사됨)');
   });
 }
 function openEventRename(){
