@@ -1425,6 +1425,7 @@ function doPrint(view){
   const marginMM = (orient==='landscape') ? 9 : 11;
   // 한 장에 맞출 문서(집회계획·배치도)는 표를 조금 조밀하게
   const compact = (view==='plan' || view==='chan');
+  const fillPage = (view==='plan'); // 집회계획만 한 장을 세로로 꽉 채워 여백 균형
   let inner = '';
   try { inner = buildPrint(view); } catch(e){ console.error(e); toast('인쇄 내용을 만들 수 없어요'); return; }
   const title = ({status:'전도현황', pray:'기도명단', plan:'집회계획', chan:'성찬위원배치도'}[view]) || '인쇄';
@@ -1438,6 +1439,14 @@ function doPrint(view){
     table.pr td.nm{font-size:11px}
     .pr-note{font-size:9.5px;margin:0 0 2px}
     .pr-notes{margin:0 0 6px}` : '';
+  const printableH = (orient==='landscape'?210:297) - marginMM*2 - 1;
+  const fillCSS = fillPage ? `
+    @media print {
+      html, body { height:100%; }
+      .pa-page { height:${printableH}mm; box-sizing:border-box; display:flex; flex-direction:column; }
+      .pa-page > table.pr { flex:1 1 auto; }
+      .pa-page > table.pr tbody td, .pa-page > table.pr tbody th { vertical-align:middle; }
+    }` : '';
   const screenCSS = `
     html,body{background:#f3f4f6;}
     .pa-bar{position:sticky;top:0;display:flex;gap:8px;justify-content:center;padding:10px;background:#fff;border-bottom:1px solid #ccc;z-index:9;}
@@ -1445,7 +1454,7 @@ function doPrint(view){
     .pa-bar .go{background:#1b244c;color:#fff;border-color:#1b244c;}
     .pa-page{background:#fff;margin:14px auto;padding:${marginMM}mm;max-width:${orient==='landscape'?'297mm':'210mm'};box-shadow:0 2px 12px rgba(0,0,0,.18);}
     @media print { .pa-bar{display:none!important;} html,body{background:#fff;} .pa-page{margin:0;padding:0;box-shadow:none;max-width:none;} }`;
-  const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"><style>${printCSS(orient)}${compactCSS}${screenCSS}</style></head><body><div class="pa-bar"><button class="go" onclick="window.print()">🖨 인쇄 / 저장</button><button onclick="window.close()">닫기</button></div><div class="pa-page">${inner}</div><script>window.addEventListener('load',function(){setTimeout(function(){try{window.focus();window.print();}catch(e){}},500);});<\/script></body></html>`;
+  const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"><style>${printCSS(orient)}${compactCSS}${fillCSS}${screenCSS}</style></head><body><div class="pa-bar"><button class="go" onclick="window.print()">🖨 인쇄 / 저장</button><button onclick="window.close()">닫기</button></div><div class="pa-page">${inner}</div><script>window.addEventListener('load',function(){setTimeout(function(){try{window.focus();window.print();}catch(e){}},500);});<\/script></body></html>`;
 
   // 1순위: 새 창 (모바일/웹뷰 호환, 실패 시 수동 인쇄 버튼 제공)
   let win = null;
