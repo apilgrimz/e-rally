@@ -435,6 +435,7 @@ let currentTab = 'status';
 function hydrateEvent(ev){
   ev.meta = ev.meta || {}; ev.settings = ev.settings || {};
   if(!Array.isArray(ev.settings.zones) || !ev.settings.zones.length) ev.settings.zones = DEFAULT_ZONES.slice();
+  ev.settings.zones.sort(zoneCmp);
   if(!Array.isArray(ev.settings.days) || !ev.settings.days.length) ev.settings.days = defaultDays();
   ev.targets = Array.isArray(ev.targets) ? ev.targets : [];
   ev.targets.forEach(t=>{
@@ -478,6 +479,18 @@ function saveDB(){
 DB = loadDB();
 
 /* ---------- 정렬 / 셀 병합 (검증된 로직) ---------- */
+function zoneCmp(a,b){
+  a = String(a||''); b = String(b||'');
+  const ma = a.match(/\d+/), mb = b.match(/\d+/);
+  if(ma && mb){
+    const d = parseInt(ma[0],10) - parseInt(mb[0],10);
+    return d || a.localeCompare(b,'ko');
+  }
+  if(ma) return -1;   // 숫자가 들어간 구역을 먼저
+  if(mb) return 1;
+  return a.localeCompare(b,'ko');
+}
+function sortZones(){ if(DB && DB.settings && Array.isArray(DB.settings.zones)) DB.settings.zones.sort(zoneCmp); }
 function zoneIndex(z){ const i = DB.settings.zones.indexOf(z); return i<0 ? 999 : i; }
 function sortedTargets(){
   const col = (a,b)=> String(a||'').localeCompare(String(b||''), 'ko');
@@ -1678,7 +1691,7 @@ function openSettingsSheet(){
     saveDB(); closeSheet(); render(); toast('설정이 저장됐어요'+dateMsg);
   });
   renderZoneTags(); renderDayList(); renderSyncBox(); renderFsPills();
-  $('#zone-add').onclick = ()=>{ const v=$('#zone-new').value.trim(); if(v && !DB.settings.zones.includes(v)){ DB.settings.zones.push(v); saveDB(); } $('#zone-new').value=''; renderZoneTags(); };
+  $('#zone-add').onclick = ()=>{ const v=$('#zone-new').value.trim(); if(v && !DB.settings.zones.includes(v)){ DB.settings.zones.push(v); DB.settings.zones.sort(zoneCmp); saveDB(); } $('#zone-new').value=''; renderZoneTags(); };
   $('#day-add').onclick = ()=>{ const v=$('#day-new').value.trim(); if(v){ DB.settings.days.push({label:v}); saveDB(); } $('#day-new').value=''; renderDayList(); };
   $('#s-export').onclick = exportJSON;
   $('#s-csv').onclick = exportCSV;
