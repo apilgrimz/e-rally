@@ -125,7 +125,7 @@ nav.tabbar {
 .legend b { color:var(--ink-soft); font-weight:600; }
 
 /* ============ 전도현황 표 (화면) ============ */
-.tbl-scroll { overflow:auto; max-height:calc(100vh - 245px); max-height:calc(100dvh - 245px - var(--safe-top) - var(--safe-bot)); margin:0 -14px; padding:0 14px 6px; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
+.tbl-scroll { overflow:auto; max-height:calc(100vh - 245px); max-height:calc(100dvh - 245px - var(--safe-top) - var(--safe-bot)); margin:0 -14px; padding:0 14px 12px; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
 .tbl-scroll::-webkit-scrollbar { height:7px; }
 .tbl-scroll::-webkit-scrollbar-thumb { background:var(--line); border-radius:3px; }
 table.sx { border-collapse:separate; border-spacing:0; width:max-content; min-width:100%; font-size:13px; }
@@ -152,7 +152,7 @@ table.sx .sum td.aggdesc { color:var(--ink-soft); font-weight:600; font-size:11p
 .day-h .d2 { font-size:11px; color:var(--ink-mute); font-weight:500; }
 
 /* ============ 기도명단 (화면 · 사진 서식 / 한 단) ============ */
-.pl-wrap { border:1px solid var(--line); border-radius:14px; overflow:auto; max-height:calc(100vh - 245px); max-height:calc(100dvh - 245px - var(--safe-top) - var(--safe-bot)); -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
+.pl-wrap { border:1px solid var(--line); border-radius:14px; overflow:auto; max-height:calc(100vh - 245px); max-height:calc(100dvh - 245px - var(--safe-top) - var(--safe-bot)); padding-bottom:12px; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
 table.pl { border-collapse:collapse; width:max-content; min-width:100%; font-size:14px; border:2px solid var(--line); }
 table.pl th, table.pl td { border-bottom:1px solid var(--line); border-right:1px solid var(--line); padding:9px 10px; text-align:center; background:var(--bg-1); vertical-align:middle; white-space:nowrap; }
 table.pl thead th { background:var(--bg-2); color:var(--ink-soft); font-weight:600; font-size:12px; position:sticky; top:0; z-index:3; }
@@ -177,6 +177,11 @@ table.sx td.col-name .ndot { color:var(--gold); font-size:8px; margin-left:4px; 
 table.sx td.col-name.has-note { color:var(--gold-soft); }
 
 /* ============ 검색 · 구역 필터 ============ */
+.search-row { display:flex; gap:8px; align-items:stretch; margin-bottom:8px; }
+.search-row .searchbar { flex:1; margin-bottom:0; min-width:0; }
+.addbtn { flex-shrink:0; width:46px; border-radius:11px; background:linear-gradient(180deg,var(--gold-soft),var(--gold-deep)); color:#2A1F0A; display:grid; place-items:center; box-shadow:0 4px 14px rgba(255,200,87,.3); }
+.addbtn svg { width:24px; height:24px; }
+.addbtn:active { transform:scale(.96); }
 .searchbar { display:flex; align-items:center; gap:8px; background:var(--bg-1); border:1px solid var(--line); border-radius:11px; padding:0 12px; margin-bottom:8px; }
 .searchbar svg { width:16px; height:16px; color:var(--ink-mute); flex-shrink:0; }
 .searchbar input { border:none; background:none; padding:10px 0; font-size:15px; border-radius:0; }
@@ -517,10 +522,11 @@ function applyFilter(items){ // items = [{t, no}]
 function statusVisible(){ return applyFilter(enrolledTargets().map((t,i)=>({t,no:i+1}))); }
 function prayVisible(){ return applyFilter(sortedTargets().map((t,i)=>({t,no:i+1}))); }
 function filterBarHTML(){
-  let h = `<div class="searchbar">
+  const addBtn = DB.viewerOnly ? '' : `<button class="addbtn" id="addBtn" aria-label="대상자 추가"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>`;
+  let h = `<div class="search-row"><div class="searchbar">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
     <input id="searchInput" placeholder="이름·인도자 검색" value="${esc(filterQ)}" autocomplete="off"/>
-    <button id="searchClear" class="sclr" style="visibility:${filterQ?'visible':'hidden'}">✕</button></div>`;
+    <button id="searchClear" class="sclr" style="visibility:${filterQ?'visible':'hidden'}">✕</button></div>${addBtn}</div>`;
   h += `<div class="zone-scroll"><button class="zone-pill ${!filterZone?'active':''}" data-zone="">전체</button>`;
   DB.settings.zones.forEach(z=>{ h += `<button class="zone-pill ${filterZone===z?'active':''}" data-zone="${esc(z)}">${esc(z)}</button>`; });
   h += `</div>`;
@@ -635,7 +641,7 @@ function render(){
   else v.innerHTML = renderPlan();
   bindView();
   const fab = $('#fab');
-  fab.style.display = ((currentTab==='status' || currentTab==='pray') && !DB.viewerOnly) ? 'grid' : 'none';
+  fab.style.display = 'none';
   fitScrollers();
   requestAnimationFrame(fitScrollers);
 }
@@ -753,7 +759,7 @@ function renderPray(){
      </div>
    </div>`;
   if(!list.length){
-    return html + `<div class="empty-state">아직 대상자가 없습니다.<br>오른쪽 아래 <b>＋</b> 버튼으로 추가하세요.</div>`;
+    return html + `<div class="empty-state">아직 대상자가 없습니다.<br>아래 버튼으로 대상자를 추가하세요.${DB.viewerOnly?'':`<div style="margin-top:16px"><button class="btn btn-primary" id="emptyAdd">＋ 대상자 추가</button></div>`}</div>`;
   }
   html += filterBarHTML();
   html += `<div id="listArea">` + prayListHTML() + `</div>`;
@@ -884,6 +890,9 @@ function bindView(){
     sc.style.visibility = 'hidden';
     refreshListArea();
   };
+  // 검색창 옆 / 빈 화면의 추가 버튼
+  const ab = $('#addBtn'); if(ab) ab.onclick = addTargetQuick;
+  const ea = $('#emptyAdd'); if(ea) ea.onclick = addTargetQuick;
   // 구역 필터 — 알약 줄은 그대로 두고(스크롤 유지) 활성 표시와 표만 갱신
   $$('#view .zone-pill').forEach(p=> p.onclick = ()=>{
     filterZone = p.dataset.zone || '';
@@ -1103,9 +1112,13 @@ function openTargetSheet(target, isNew){
     });
   }
 }
+function addTargetQuick(){
+  if(!canEdit()) return;
+  openTargetSheet({ id:uid(), zone: filterZone || '', leader:'', relation:'', name:'', note:'', attend:{}, enrolled: currentTab==='status' }, true);
+}
 $('#fab').onclick = ()=>{
   if(currentTab==='plan') return;
-  openTargetSheet({ id:uid(), zone: filterZone || '', leader:'', relation:'', name:'', note:'', attend:{}, enrolled: currentTab==='status' }, true);
+  addTargetQuick();
 };
 
 /* =================================================================
