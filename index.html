@@ -237,6 +237,7 @@ table.ptbl tbody tr:active td { background:var(--bg-2); }
 .cdiag .cd-dv { flex:1; max-width:84px; text-align:center; background:var(--bg-2); border:1px solid var(--line); border-radius:8px; padding:7px 4px; font-size:12px; color:var(--ink-soft); }
 table.cmap { border-collapse:collapse; width:max-content; min-width:100%; font-size:12.5px; border:2px solid var(--line); }
 table.cmap th, table.cmap td { border:1px solid var(--line); padding:8px 8px; text-align:center; vertical-align:middle; word-break:keep-all; }
+table.cmap .dupname { color:var(--gold-soft); font-weight:800; background:rgba(255,200,87,.16); border-radius:5px; padding:1px 5px; box-shadow:inset 0 0 0 1px rgba(255,200,87,.35); }
 table.cmap thead th { background:var(--bg-2); color:var(--ink-soft); font-weight:700; white-space:nowrap; }
 table.cmap td.clbl { background:var(--bg-2); color:var(--gold-soft); font-weight:700; white-space:nowrap; }
 table.cmap td.ccell { background:var(--bg-1); color:var(--ink); min-width:72px; }
@@ -1374,9 +1375,26 @@ function buildChanDiagram(forPrint){
   h += `</div></div>`;
   return h;
 }
+/* 배치도 이름 중복 감지: 모든 칸의 이름을 세어 2회 이상이면 강조 */
+function chanNameCounts(){
+  const c = DB.chanmap; const m = {};
+  const add = v => String(v||'').split(/[\s,，、·/]+/).map(x=>x.trim()).filter(Boolean).forEach(n=>{ m[n]=(m[n]||0)+1; });
+  (c.roles||[]).forEach(r=> (r.cells||[]).forEach(add));
+  (c.fixed||[]).forEach(f=> add(f.value));
+  return m;
+}
+function chanCell(v, counts){
+  const s = String(v||'');
+  if(!s.trim()) return '';
+  return s.split(/([\s,，、·/]+)/).map(p=>{
+    if(p==='' || /^[\s,，、·/]+$/.test(p)) return esc(p);
+    return (counts[p.trim()]>=2) ? `<span class="dupname">${esc(p)}</span>` : esc(p);
+  }).join('');
+}
 function buildChanGrid(forPrint){
   const c = DB.chanmap;
   if(!c.roles.length) return '';
+  const counts = chanNameCounts();
   const T = forPrint ? { tbl:'pr', lb:'lb', cell:'', fx:'' } : { tbl:'cmap', lb:'clbl', cell:'ccell', fx:'cfx' };
   const totalCols = 1 + c.divisions.length + c.fixed.length;
   let cols = '';
@@ -1391,8 +1409,8 @@ function buildChanGrid(forPrint){
   let body = '<tbody>';
   c.roles.forEach((r,i)=>{
     body += `<tr${forPrint?'':' data-cedit="1"'}><td class="${T.lb}">${esc(r.label)}</td>`;
-    c.divisions.forEach((_,di)=> body += `<td class="${T.cell}">${esc((r.cells||[])[di]||'')}</td>`);
-    if(i===0) c.fixed.forEach(f=> body += `<td class="${T.fx}" rowspan="${c.roles.length}">${esc(f.value)}</td>`);
+    c.divisions.forEach((_,di)=> body += `<td class="${T.cell}">${chanCell((r.cells||[])[di]||'', counts)}</td>`);
+    if(i===0) c.fixed.forEach(f=> body += `<td class="${T.fx}" rowspan="${c.roles.length}">${chanCell(f.value, counts)}</td>`);
     body += `</tr>`;
   });
   body += '</tbody>';
@@ -1456,6 +1474,7 @@ function printCSS(orient){
     table.pr th, table.pr td { border:.7px solid #c2c7d2; padding:5px 4px; text-align:center; font-size:12px; color:#1b1f2e; word-break:keep-all; vertical-align:middle; line-height:1.4; }
     table.pr thead th { background:#101631; color:#fff; font-weight:700; font-size:11.5px; letter-spacing:.02em; border-color:#101631; padding:6px 4px; }
     table.pr td.nm { font-weight:700; font-size:13px; color:#101631; }
+    table.pr .dupname { font-weight:800; color:#9a3412; background:#ffedd5; border-radius:4px; padding:0 4px; box-shadow:inset 0 0 0 1px #f7c08a; }
     table.pr td.lb { background:#f2f4f9; font-weight:700; color:#2c3350; }
     table.pr td.sum { background:#e9ecf5; font-weight:700; color:#101631; }
     table.pr td.mv { text-align:center; }
@@ -1534,6 +1553,7 @@ async function exportImage(view){
     table.pr th,table.pr td{border:1px solid #c2c7d2;padding:10px 6px;text-align:center;font-size:17.5px;color:#1b1f2e;word-break:keep-all;vertical-align:middle;line-height:1.4}
     table.pr thead th{background:#101631;color:#fff;font-weight:700;font-size:17px;letter-spacing:.02em;border-color:#101631}
     table.pr td.nm{font-weight:700;font-size:18.5px;color:#101631}
+    table.pr .dupname{font-weight:800;color:#9a3412;background:#ffedd5;border-radius:5px;padding:0 5px;box-shadow:inset 0 0 0 1.4px #f7c08a}
     table.pr td.lb{background:#f2f4f9;font-weight:700;color:#2c3350}
     table.pr td.sum{background:#e9ecf5;font-weight:700;color:#101631}
     table.pr td.mv{text-align:center}
