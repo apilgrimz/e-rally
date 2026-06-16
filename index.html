@@ -388,7 +388,8 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역'];
+const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
+const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
 function defaultPlan(){
   return JSON.parse('{"schema":2,"title":"대전도집회 계획","sub":"2026년 3월 9일(월) ~ 15일(주일), 오성용 목사","topNotes":[],"dayLabels":["1일","2일","3일","4일","5일","6일"],"rows":[{"cat":"점심식사","label":"담당","mode":"days","cells":["","","","","",""],"value":""},{"cat":"점심식사","label":"장소","mode":"days","cells":["","","","","",""],"value":""},{"cat":"봉사회","label":"주차관리 (18:30~20:00)","mode":"merged","cells":[],"value":""},{"cat":"봉사회","label":"대강당 안내 (18:50~19:30) · 분리수거","mode":"days","cells":["","","","","",""],"value":""},{"cat":"어머니회","label":"저녁식사 (18:00~19:20) · 식당 청소","mode":"days","cells":["","","","","",""],"value":""},{"cat":"어머니회","label":"강사 식사","mode":"days","cells":["","","","","",""],"value":""},{"cat":"어머니회","label":"강사 음료","mode":"merged","cells":[],"value":""},{"cat":"어머니회","label":"강사 숙소","mode":"merged","cells":[],"value":""},{"cat":"어머니회","label":"영유아 봉사","mode":"days","cells":["","","","","",""],"value":""},{"cat":"청년회","label":"칠판 정리","mode":"merged","cells":[],"value":""},{"cat":"청년회","label":"유초등부 봉사","mode":"days","cells":["","","","","",""],"value":""},{"cat":"화장실","label":"5층(남/여)","mode":"merged","cells":[],"value":""},{"cat":"화장실","label":"6층(남/여)","mode":"merged","cells":[],"value":""},{"cat":"","label":"강사 노트북 설치 · 마이크 테스트","mode":"merged","cells":[],"value":""},{"cat":"","label":"찬양 인도","mode":"merged","cells":[],"value":""},{"cat":"","label":"반주","mode":"merged","cells":[],"value":""},{"cat":"","label":"사회","mode":"merged","cells":[],"value":""},{"cat":"","label":"특송","mode":"days","cells":["","","","","",""],"value":""},{"cat":"","label":"전도대상자 참석현황 집계","mode":"merged","cells":[],"value":""},{"cat":"","label":"카톡 올리기","mode":"merged","cells":[],"value":""},{"cat":"","label":"성찬위원","mode":"merged","cells":[],"value":""}]}');
@@ -446,6 +447,7 @@ function hydrateEvent(ev){
   ev.targets.forEach(t=>{
     if(!t.attend) t.attend = {};
     if(t.enrolled===undefined) t.enrolled = false;
+    if(t.church===undefined) t.church = '';
   });
   ev.plan = migratePlan(ev.plan);
   ev.chanmap = migrateChan(ev.chanmap);
@@ -484,6 +486,8 @@ function saveDB(){
 DB = loadDB();
 
 /* ---------- 정렬 / 셀 병합 (검증된 로직) ---------- */
+/* 표시용 구역: 타교회면 입력한 교회명, 아니면 구역명 */
+function zoneDisplay(t){ return (t && t.zone===EXT_ZONE && t.church) ? t.church : (t ? (t.zone||'') : ''); }
 function zoneCmp(a,b){
   a = String(a||''); b = String(b||'');
   const ma = a.match(/\d+/), mb = b.match(/\d+/);
@@ -501,6 +505,7 @@ function sortedTargets(){
   const col = (a,b)=> String(a||'').localeCompare(String(b||''), 'ko');
   return DB.targets.map((t,i)=>({t,i}))
     .sort((a,b)=> zoneIndex(a.t.zone)-zoneIndex(b.t.zone)
+                || col(zoneDisplay(a.t), zoneDisplay(b.t))
                 || col(a.t.leader, b.t.leader)
                 || col(a.t.name, b.t.name)
                 || a.i-b.i)
@@ -709,7 +714,7 @@ function statusListHTML(){
     body += `<tr data-id="${t.id}">
       <td class="col-no">${no}</td>
       <td class="col-name row-edit${noteCls}" data-status="${t.id}">${esc(t.name)||'<span class="dim">이름</span>'}${t.note?'<span class="ndot">●</span>':''}</td>
-      <td class="zo">${esc(t.zone)}</td><td class="ld">${esc(t.leader)}</td><td class="rel">${esc(t.relation)}</td>`;
+      <td class="zo">${esc(zoneDisplay(t))}</td><td class="ld">${esc(t.leader)}</td><td class="rel">${esc(t.relation)}</td>`;
     days.forEach((d,di)=>{
       const a = t.attend[di] || {};
       body += `<td class="tap on-cell ${a.on?'hit':'dim'}" data-tap="${t.id}" data-day="${di}" data-mode="on"><span class="mk">${a.on?'○':'·'}</span></td>`;
@@ -772,13 +777,13 @@ function prayListHTML(){
   }
   let html = `<div class="pray-toolbar"><span class="muted">참석 칸을 체크하면 <b>전도현황</b> 명단에 등록됩니다.</span></div>`;
   const vts = visible.map(x=>x.t);
-  const zoneSpans = computeSpans(vts, t=>t.zone);
-  const leaderSpans = computeSpans(vts, t=> t.zone+'||'+t.leader);
+  const zoneSpans = computeSpans(vts, t=> zoneDisplay(t));
+  const leaderSpans = computeSpans(vts, t=> zoneDisplay(t)+'||'+t.leader);
   let h = `<div class="pl-wrap"><table class="pl">
     <thead><tr><th>번호</th><th>구역</th><th>인도자</th><th>관계</th><th>대상자</th><th>참석</th></tr></thead><tbody>`;
   visible.forEach(({t,no},idx)=>{
     h += `<tr data-edit="${t.id}"><td class="no">${no}</td>`;
-    if(zoneSpans[idx]>0) h += `<td class="zo" rowspan="${zoneSpans[idx]}">${esc(t.zone)}</td>`;
+    if(zoneSpans[idx]>0) h += `<td class="zo" rowspan="${zoneSpans[idx]}">${esc(zoneDisplay(t))}</td>`;
     if(leaderSpans[idx]>0) h += `<td class="ld" rowspan="${leaderSpans[idx]}">${esc(t.leader)}</td>`;
     h += `<td class="rel">${esc(t.relation)}</td><td class="nm${t.note?' has-note':''}" data-status="${t.id}">${esc(t.name)||'<span class="dim">이름</span>'}${t.note?'<span class="ndot">●</span>':''}</td>`;
     h += `<td class="chk ${t.enrolled?'on':''}" data-attendchk="${t.id}"><span class="ck">${t.enrolled?'✓':''}</span></td></tr>`;
@@ -1074,10 +1079,13 @@ $('#sheetSave').onclick = ()=>{ if(sheetCtx && sheetCtx.save) sheetCtx.save(); }
 function openTargetSheet(target, isNew){
   if(!canEdit()) return;
   const t = target;
-  const zoneOpts = DB.settings.zones.map(z=> `<option value="${esc(z)}" ${z===t.zone?'selected':''}>${esc(z)}</option>`).join('');
+  const zones = DB.settings.zones.includes(EXT_ZONE) ? DB.settings.zones : DB.settings.zones.concat([EXT_ZONE]);
+  const zoneOpts = zones.map(z=> `<option value="${esc(z)}" ${z===t.zone?'selected':''}>${esc(z)}</option>`).join('');
   const body = `
     <div class="field"><label>구역</label>
       <select id="f-zone"><option value="">선택</option>${zoneOpts}</select></div>
+    <div class="field" id="f-church-wrap" style="display:${t.zone===EXT_ZONE?'block':'none'}"><label>교회명</label>
+      <input id="f-church" value="${esc(t.church||'')}" placeholder="예) 은혜교회"/></div>
     <div class="row-2">
       <div class="field"><label>인도자</label><input id="f-leader" value="${esc(t.leader)}" placeholder="예) 백양임S"/></div>
       <div class="field"><label>관계</label><input id="f-rel" value="${esc(t.relation)}" placeholder="예) 친구"/></div>
@@ -1088,15 +1096,23 @@ function openTargetSheet(target, isNew){
   `;
   openSheet(isNew?'대상자 추가':'대상자 편집', body, ()=>{
     t.zone = $('#f-zone').value;
+    t.church = (t.zone===EXT_ZONE) ? ($('#f-church').value.trim()) : '';
     t.leader = $('#f-leader').value.trim();
     t.relation = $('#f-rel').value.trim();
     t.name = $('#f-name').value.trim();
     t.note = $('#f-note').value.trim();
     if(!t.name){ toast('대상자 이름을 입력하세요'); return; }
+    if(t.zone===EXT_ZONE && !t.church){ toast('교회명을 입력하세요'); return; }
     if(isNew) DB.targets.push(t);
     saveDB(); closeSheet(); render();
     toast(isNew?'추가되었습니다':'저장되었습니다');
   });
+  // 구역이 '타교회'일 때만 교회명 입력칸 표시
+  const zsel = $('#f-zone');
+  if(zsel) zsel.onchange = ()=>{
+    const w = $('#f-church-wrap');
+    if(w){ w.style.display = (zsel.value===EXT_ZONE) ? 'block' : 'none'; if(zsel.value===EXT_ZONE){ const ci=$('#f-church'); if(ci) ci.focus(); } }
+  };
   if(!isNew){
     $('#f-del').onclick = ()=> confirmModal('대상자 삭제', `'${t.name||'이 대상자'}'을(를) 삭제할까요?`, ()=>{
       const idx = DB.targets.findIndex(x=>x.id===t.id);
@@ -1284,8 +1300,8 @@ function prTitle(docType, extra){
 }
 function buildStatusPrint(){
   const list = enrolledTargets(); const days = DB.settings.days;
-  const zoneSpans = computeSpans(list, t=>t.zone);
-  const leaderSpans = computeSpans(list, t=> t.zone+'||'+t.leader);
+  const zoneSpans = computeSpans(list, t=> zoneDisplay(t));
+  const leaderSpans = computeSpans(list, t=> zoneDisplay(t)+'||'+t.leader);
   let h = prTitle('전도 현황');
   // colgroup
   let cols = `<col style="width:5%"><col style="width:7%"><col style="width:9%"><col style="width:7%"><col style="width:10%">`;
@@ -1299,7 +1315,7 @@ function buildStatusPrint(){
   let body = '<tbody>';
   list.forEach((t,idx)=>{
     body += `<tr><td>${idx+1}</td>`;
-    if(zoneSpans[idx]>0) body += `<td rowspan="${zoneSpans[idx]}">${esc(t.zone)}</td>`;
+    if(zoneSpans[idx]>0) body += `<td rowspan="${zoneSpans[idx]}">${esc(zoneDisplay(t))}</td>`;
     if(leaderSpans[idx]>0) body += `<td rowspan="${leaderSpans[idx]}">${esc(t.leader)}</td>`;
     body += `<td>${esc(t.relation)}</td><td class="nm">${esc(t.name)}</td>`;
     days.forEach((d,di)=>{ const a=t.attend[di]||{}; body += `<td>${a.on?'○':''}</td><td>${a.off?'○':''}</td>`; });
@@ -1323,13 +1339,13 @@ function buildPrayPrint(){
   const half = Math.ceil(list.length/2);
   function block(arr, startNo){
     if(!arr.length) return '';
-    const zoneSpans = computeSpans(arr, t=>t.zone);
-    const leaderSpans = computeSpans(arr, t=> t.zone+'||'+t.leader);
+    const zoneSpans = computeSpans(arr, t=> zoneDisplay(t));
+    const leaderSpans = computeSpans(arr, t=> zoneDisplay(t)+'||'+t.leader);
     let b = `<table class="pr"><colgroup><col style="width:11%"><col style="width:19%"><col style="width:24%"><col style="width:17%"><col style="width:29%"></colgroup>
       <thead><tr><th>번호</th><th>구역</th><th>인도자</th><th>관계</th><th>대상자</th></tr></thead><tbody>`;
     arr.forEach((t,i)=>{
       b += `<tr><td>${startNo+i}</td>`;
-      if(zoneSpans[i]>0) b += `<td rowspan="${zoneSpans[i]}">${esc(t.zone)}</td>`;
+      if(zoneSpans[i]>0) b += `<td rowspan="${zoneSpans[i]}">${esc(zoneDisplay(t))}</td>`;
       if(leaderSpans[i]>0) b += `<td rowspan="${leaderSpans[i]}">${esc(t.leader)}</td>`;
       b += `<td>${esc(t.relation)}</td><td class="nm">${esc(t.name)}</td></tr>`;
     });
@@ -1792,7 +1808,7 @@ function exportCSV(){
   head.push('메모');
   rows.push(head);
   sortedTargets().forEach((t,i)=>{
-    const r = [i+1, t.zone||'', t.leader||'', t.relation||'', t.name||'', t.enrolled?'O':''];
+    const r = [i+1, zoneDisplay(t), t.leader||'', t.relation||'', t.name||'', t.enrolled?'O':''];
     days.forEach((d,di)=>{ const a=t.attend[di]||{}; r.push(a.on?'O':'', a.off?'O':''); });
     r.push(t.note||'');
     rows.push(r);
