@@ -1,5 +1,5 @@
 /* 전도집회 서비스워커 — 오프라인 지원 (Stale-While-Revalidate) */
-const CACHE = 'evangelism-v1';
+const CACHE = 'evangelism-v2';
 const SHELL = [
   './',
   './index.html',
@@ -37,6 +37,20 @@ self.addEventListener('fetch', (e) => {
   if (req.mode === 'navigate') {
     e.respondWith(
       fetch(req).catch(() => caches.match('./index.html'))
+    );
+    return;
+  }
+
+  // index.html · manifest.json 은 항상 네트워크 우선(업데이트 즉시 반영) → 실패 시 캐시
+  if (url.pathname.endsWith('/index.html') || url.pathname.endsWith('/manifest.json')) {
+    e.respondWith(
+      fetch(req).then((res) => {
+        if (res && res.status === 200) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+        }
+        return res;
+      }).catch(() => caches.match(req))
     );
     return;
   }
