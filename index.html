@@ -129,7 +129,7 @@ nav.tabbar {
 .tbl-scroll::-webkit-scrollbar { height:7px; }
 .tbl-scroll::-webkit-scrollbar-thumb { background:var(--line); border-radius:3px; }
 table.sx { border-collapse:separate; border-spacing:0; width:max-content; min-width:100%; font-size:13px; }
-table.sx th, table.sx td { border-bottom:1px solid var(--line); border-right:1px solid var(--line); padding:7px 6px; text-align:center; white-space:nowrap; background:var(--bg-1); }
+table.sx th, table.sx td { border-bottom:1px solid #3C488A; border-right:1px solid #3C488A; padding:7px 6px; text-align:center; white-space:nowrap; background:var(--bg-1); font-weight:500; }
 table.sx thead th { background:var(--bg-2); color:var(--ink-soft); font-weight:600; font-size:12px; position:sticky; z-index:3; }
 table.sx thead tr:first-child th { top:0; height:32px; }
 table.sx thead tr:nth-child(2) th { top:32px; }
@@ -137,8 +137,8 @@ table.sx .col-no { position:sticky; left:0; z-index:4; width:34px; min-width:34p
 table.sx thead .col-no { z-index:6; }
 table.sx .col-name { position:sticky; left:34px; z-index:4; min-width:74px; font-weight:700; color:var(--ink); box-shadow:6px 0 8px -6px rgba(0,0,0,.5); }
 table.sx thead .col-name { z-index:6; }
-table.sx td.zo, table.sx td.ld, table.sx td.rel { color:var(--ink-soft); }
-table.sx td.tap { cursor:pointer; min-width:30px; font-size:14px; line-height:1; padding:0; height:34px; }
+table.sx td.zo, table.sx td.ld, table.sx td.rel { color:#D2D8F0; }
+table.sx td.tap { cursor:pointer; min-width:32px; font-size:15px; line-height:1; padding:0; height:34px; }
 table.sx td.tap.on-cell.hit { color:var(--green); }
 table.sx td.tap.off-cell.hit { color:var(--gold); }
 table.sx td.tap .mk { display:inline-block; width:100%; height:100%; line-height:34px; }
@@ -154,11 +154,11 @@ table.sx .sum td.aggdesc { color:var(--ink-soft); font-weight:600; font-size:11p
 /* ============ 기도명단 (화면 · 사진 서식 / 한 단) ============ */
 .pl-wrap { border:1px solid var(--line); border-radius:14px; overflow:auto; max-height:calc(100vh - 245px); max-height:calc(100dvh - 245px - var(--safe-top) - var(--safe-bot)); padding-bottom:12px; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
 table.pl { border-collapse:collapse; width:max-content; min-width:100%; font-size:14px; border:2px solid var(--line); }
-table.pl th, table.pl td { border-bottom:1px solid var(--line); border-right:1px solid var(--line); padding:9px 10px; text-align:center; background:var(--bg-1); vertical-align:middle; white-space:nowrap; }
+table.pl th, table.pl td { border-bottom:1px solid #3C488A; border-right:1px solid #3C488A; padding:9px 10px; text-align:center; background:var(--bg-1); vertical-align:middle; white-space:nowrap; font-weight:500; }
 table.pl thead th { background:var(--bg-2); color:var(--ink-soft); font-weight:600; font-size:12px; position:sticky; top:0; z-index:3; }
 table.pl td.no { color:var(--ink-mute); font-size:12px; width:40px; }
-table.pl td.zo { color:var(--ink-soft); font-weight:600; width:64px; }
-table.pl td.ld { color:var(--ink-soft); }
+table.pl td.zo { color:#D2D8F0; font-weight:600; width:64px; }
+table.pl td.ld { color:#D2D8F0; }
 table.pl td.rel { color:var(--ink-mute); width:64px; }
 table.pl td.nm { font-weight:700; color:var(--ink); text-align:left; }
 table.pl tbody tr { cursor:pointer; }
