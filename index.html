@@ -683,8 +683,7 @@ function renderStatus(){
        <button class="btn btn-secondary btn-sm" data-act="photo-status">📷 사진</button>
        <button class="btn btn-secondary btn-sm" data-act="print-status">🖨 인쇄</button>
      </div>
-   </div>
-   <div class="legend"><span class="muted">날짜 칸을 눌러 체크 · 이름을 누르면 상태 입력</span></div>`;
+   </div>`;
 
   if(!all.length){
     return html + `<div class="empty-state">아직 등록된 대상자가 없습니다.<br><b>기도명단</b>에서 참석을 체크하면 여기에 나타납니다.</div>`;
@@ -728,7 +727,7 @@ function statusListHTML(){
   body += statusSummaryRows(visible.map(x=>x.t));
   body += '</tbody>';
 
-  return `<div class="tbl-scroll"><table class="sx">${head}${body}</table></div>`;
+  return `<div class="legend" style="margin:2px 0 6px"><span class="muted">날짜 칸을 눌러 체크 · 이름을 누르면 상태 입력</span></div><div class="tbl-scroll"><table class="sx">${head}${body}</table></div>`;
 }
 function statusSummaryRows(list){
   const st = attStats(list);
