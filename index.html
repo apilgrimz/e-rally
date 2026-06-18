@@ -121,7 +121,7 @@ nav.tabbar {
 .view-head .vt { font-size:18px; font-weight:800; letter-spacing:-.02em; }
 .view-head .vt small { display:block; font-size:12px; font-weight:500; color:var(--ink-mute); margin-top:2px; }
 .view-actions { display:flex; gap:6px; }
-.legend { display:flex; gap:10px; align-items:center; font-size:12px; color:var(--ink-mute); margin-bottom:8px; flex-wrap:wrap; }
+.legend { display:flex; gap:10px; align-items:center; font-size:12px; color:var(--ink-mute); margin-bottom:6px; flex-wrap:wrap; }
 .legend b { color:var(--ink-soft); font-weight:600; }
 
 /* ============ 전도현황 표 (화면) ============ */
@@ -177,14 +177,14 @@ table.sx td.col-name .ndot { color:var(--gold); font-size:8px; margin-left:4px; 
 table.sx td.col-name.has-note { color:var(--gold-soft); }
 
 /* ============ 검색 · 구역 필터 ============ */
-.search-row { display:flex; gap:8px; align-items:stretch; margin-bottom:8px; }
+.search-row { display:flex; gap:8px; align-items:stretch; margin-bottom:6px; }
 .search-row .searchbar { flex:1; margin-bottom:0; min-width:0; }
 .addbtn { flex-shrink:0; width:46px; border-radius:11px; background:linear-gradient(180deg,var(--gold-soft),var(--gold-deep)); color:#2A1F0A; display:grid; place-items:center; box-shadow:0 4px 14px rgba(255,200,87,.3); }
 .addbtn svg { width:24px; height:24px; }
 .addbtn:active { transform:scale(.96); }
 .searchbar { display:flex; align-items:center; gap:8px; background:var(--bg-1); border:1px solid var(--line); border-radius:11px; padding:0 12px; margin-bottom:8px; }
 .searchbar svg { width:16px; height:16px; color:var(--ink-mute); flex-shrink:0; }
-.searchbar input { border:none; background:none; padding:10px 0; font-size:15px; border-radius:0; }
+.searchbar input { border:none; background:none; padding:6px 0; font-size:15px; border-radius:0; }
 .searchbar input:focus { border:none; background:none; }
 .searchbar .sclr { color:var(--ink-mute); font-size:14px; padding:6px; flex-shrink:0; }
 .zone-scroll { display:flex; gap:6px; overflow-x:auto; margin:0 -14px 10px; padding:0 14px 4px; -webkit-overflow-scrolling:touch; }
@@ -683,7 +683,7 @@ function renderStatus(){
        <button class="btn btn-secondary btn-sm" data-act="print-status">🖨 인쇄</button>
      </div>
    </div>
-   <div class="legend"><span>참석 표시: <b>○</b></span><span><b>온</b> 온라인</span><span><b>오프</b> 오프라인</span><span class="muted">날짜 칸을 눌러 체크 · 이름을 누르면 상태 입력</span></div>`;
+   <div class="legend"><span class="muted">날짜 칸을 눌러 체크 · 이름을 누르면 상태 입력</span></div>`;
 
   if(!all.length){
     return html + `<div class="empty-state">아직 등록된 대상자가 없습니다.<br><b>기도명단</b>에서 참석을 체크하면 여기에 나타납니다.</div>`;
