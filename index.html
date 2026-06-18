@@ -637,6 +637,7 @@ function attStats(list){
 function setTab(tab){
   currentTab = tab;
   $$('.tabbar button').forEach(b=> b.classList.toggle('active', b.dataset.tab===tab));
+  window.scrollTo(0, 0);
   render();
 }
 function render(){
