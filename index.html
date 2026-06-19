@@ -33,12 +33,12 @@
   --topbar-h:62px;
 }
 * { box-sizing:border-box; }
-html,body { margin:0; padding:0; background:var(--bg-0); color:var(--ink); }
+html,body { margin:0; padding:0; background:var(--bg-0); color:var(--ink); height:100%; }
 body {
   font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;
   font-size:15px; line-height:1.5; font-feature-settings:'tnum';
   -webkit-tap-highlight-color:transparent; overscroll-behavior-y:none;
-  min-height:100vh; min-height:100dvh;
+  height:100vh; height:100dvh; overflow:hidden;
 }
 button,input,select,textarea { font:inherit; color:inherit; }
 button { background:none; border:none; cursor:pointer; padding:0; }
@@ -56,9 +56,9 @@ select {
 ::placeholder { color:var(--ink-mute); }
 
 /* ============ 레이아웃 ============ */
-#app { padding-bottom:calc(72px + var(--safe-bot)); }
+#app { height:100vh; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
 header.topbar {
-  position:sticky; top:0; z-index:50; padding:calc(10px + var(--safe-top)) 14px 10px;
+  position:relative; z-index:50; flex:0 0 auto; padding:calc(10px + var(--safe-top)) 14px 10px;
   background:linear-gradient(180deg,rgba(11,16,36,.95),rgba(11,16,36,.85));
   backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
   border-bottom:1px solid var(--line-soft); display:flex; align-items:center; gap:10px;
@@ -84,10 +84,10 @@ header.topbar {
 .topbar .gear svg { width:17px; height:17px; }
 .topbar .gear:active { background:var(--bg-2); }
 
-main.content { padding:14px; max-width:820px; margin:0 auto; }
+main.content { flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; padding:14px 14px 18px; max-width:820px; margin:0 auto; width:100%; box-sizing:border-box; }
 
 nav.tabbar {
-  position:fixed; left:0; right:0; bottom:0; z-index:50; padding:8px 8px calc(8px + var(--safe-bot));
+  position:relative; z-index:50; flex:0 0 auto; padding:8px 8px calc(8px + var(--safe-bot));
   background:rgba(11,16,36,.95); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
   border-top:1px solid var(--line-soft); display:grid; grid-template-columns:repeat(3,1fr); gap:4px;
 }
@@ -345,7 +345,6 @@ table.cmap tbody tr:active td { background:var(--bg-2); }
     </button>
   </header>
   <main class="content" id="view"></main>
-</div>
 
 <button class="fab" id="fab" aria-label="추가" style="display:none">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -364,6 +363,7 @@ table.cmap tbody tr:active td { background:var(--bg-2); }
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> 집회계획
   </button>
 </nav>
+</div>
 
 <div class="ev-dropdown" id="evDropdown"></div>
 <div class="sheet-backdrop" id="sheetBackdrop"></div>
@@ -637,6 +637,7 @@ function attStats(list){
 function setTab(tab){
   currentTab = tab;
   $$('.tabbar button').forEach(b=> b.classList.toggle('active', b.dataset.tab===tab));
+  const vw = $('#view'); if(vw) vw.scrollTop = 0;
   window.scrollTo(0, 0);
   render();
 }
@@ -652,16 +653,17 @@ function render(){
   fitScrollers();
   requestAnimationFrame(fitScrollers);
 }
-/* 표 스크롤 영역 높이를 화면에 정확히 맞춤 — 마지막 행이 하단 탭에 가리지 않도록 */
+/* 표 스크롤 영역 높이를 #view 안쪽에 정확히 맞춤 — 마지막 행이 탭바에 가리지 않도록 */
 function fitScrollers(){
-  const tab = document.querySelector('nav.tabbar');
-  const tabH = tab ? tab.offsetHeight : 64;
+  const view = $('#view'); if(!view) return;
   const z = document.documentElement.classList.contains('fs-xl') ? 1.27
           : document.documentElement.classList.contains('fs-lg') ? 1.13 : 1;
+  const vb = view.getBoundingClientRect().bottom;
+  const padB = parseFloat(getComputedStyle(view).paddingBottom) || 0;
   $$('#view .tbl-scroll, #view .pl-wrap').forEach(el=>{
     const top = el.getBoundingClientRect().top;
-    const h = (window.innerHeight - top - tabH - 10) / z;
-    el.style.maxHeight = Math.max(160, Math.round(h)) + 'px';
+    const avail = (vb - padB - top - 6) / z;
+    el.style.maxHeight = Math.max(160, Math.round(avail)) + 'px';
   });
 }
 function refreshTopbar(){
@@ -942,14 +944,15 @@ function handleAct(a){
 /* 화면 다시 그릴 때 스크롤 위치 유지 */
 /* 화면 다시 그릴 때 모든 스크롤 위치(가로·세로·구역 줄) 유지 */
 function rerenderPreserve(){
-  const y = window.scrollY || window.pageYOffset || 0;
+  const vw = $('#view');
+  const y = vw ? vw.scrollTop : (window.scrollY || 0);
   const sels = ['.tbl-scroll', '.ptbl-scroll', '.pl-wrap', '.zone-scroll'];
   const saved = sels.map(s=> $$('#view '+s).map(el=>({ l:el.scrollLeft, t:el.scrollTop })));
   render();
   sels.forEach((s,si)=> $$('#view '+s).forEach((el,i)=>{
     const v = saved[si] && saved[si][i]; if(v){ el.scrollLeft=v.l; el.scrollTop=v.t; }
   }));
-  window.scrollTo(0, y);
+  const vw2 = $('#view'); if(vw2) vw2.scrollTop = y;
 }
 
 /* 검색·구역 필터 변경 시 — 검색창/알약 줄은 그대로 두고 표 영역만 갱신 */
