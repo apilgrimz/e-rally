@@ -449,6 +449,7 @@ function hydrateEvent(ev){
     if(!t.attend) t.attend = {};
     if(t.enrolled===undefined) t.enrolled = false;
     if(t.church===undefined) t.church = '';
+    if(t.inPray===undefined) t.inPray = true;
   });
   ev.plan = migratePlan(ev.plan);
   ev.chanmap = migrateChan(ev.chanmap);
@@ -514,6 +515,14 @@ function sortedTargets(){
 }
 /* 전도현황 명단 = 기도명단에서 '참석' 체크(등록)된 대상자만 */
 function enrolledTargets(){ return sortedTargets().filter(t=> t.enrolled); }
+function prayTargets(){ return sortedTargets().filter(t=> t.inPray); }
+/* 같은 대상자 판정: 구역 + 이름(타교회는 교회명까지) 동일 */
+function sameTarget(a, b){
+  if(String(a.name||'').trim() !== String(b.name||'').trim()) return false;
+  if((a.zone||'') !== (b.zone||'')) return false;
+  if(a.zone===EXT_ZONE && (a.church||'') !== (b.church||'')) return false;
+  return true;
+}
 
 /* ----- 검색·구역 필터 (전도현황·기도명단 공용) ----- */
 let filterQ = '', filterZone = '';
@@ -526,7 +535,7 @@ function applyFilter(items){ // items = [{t, no}]
   });
 }
 function statusVisible(){ return applyFilter(enrolledTargets().map((t,i)=>({t,no:i+1}))); }
-function prayVisible(){ return applyFilter(sortedTargets().map((t,i)=>({t,no:i+1}))); }
+function prayVisible(){ return applyFilter(prayTargets().map((t,i)=>({t,no:i+1}))); }
 function filterBarHTML(){
   const addBtn = DB.viewerOnly ? '' : `<button class="addbtn" id="addBtn" aria-label="대상자 추가"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>`;
   let h = `<div class="search-row"><div class="searchbar">
@@ -755,7 +764,7 @@ function statusSummaryRows(list){
 
 /* ----- 기도명단 (전체 명단 · 참석 체크 = 전도현황 등록) ----- */
 function praySmallText(){
-  const list = sortedTargets();
+  const list = prayTargets();
   const enrolled = list.filter(t=> t.enrolled).length;
   const vis = prayVisible().length;
   return `대상자 ${list.length}명 · 참석 ${enrolled}명${(filterQ||filterZone)?` · 표시 ${vis}명`:''}`;
@@ -1111,8 +1120,30 @@ function openTargetSheet(target, isNew){
     t.note = $('#f-note').value.trim();
     if(!t.name){ toast('대상자 이름을 입력하세요'); return; }
     if(t.zone===EXT_ZONE && !t.church){ toast('교회명을 입력하세요'); return; }
-    if(isNew) DB.targets.push(t);
-    saveDB(); closeSheet(); render();
+
+    if(isNew){
+      const fromStatus = (currentTab==='status');
+      // 같은 구역·같은 이름이 이미 있으면 중복으로 추가하지 않고 기존 대상자에 반영
+      const dup = DB.targets.find(x=> sameTarget(x, t));
+      if(dup){
+        if(fromStatus){
+          if(dup.enrolled){ toast('이미 전도현황에 등록된 대상자예요'); closeSheet(); return; }
+          dup.enrolled = true; dup.attend = {};
+          saveDB(); closeSheet(); rerenderPreserve();
+          toast('이미 있는 대상자라 참석 등록했어요');
+        }else{
+          if(dup.inPray){ toast('이미 기도명단에 있는 대상자예요'); closeSheet(); return; }
+          dup.inPray = true;
+          saveDB(); closeSheet(); rerenderPreserve();
+          toast('기도명단에 추가했어요');
+        }
+        return;
+      }
+      // 신규: 전도현황에서 추가하면 기도명단에는 올리지 않음(참석자 전용)
+      t.inPray = !fromStatus;
+      DB.targets.push(t);
+    }
+    saveDB(); closeSheet(); rerenderPreserve();
     toast(isNew?'추가되었습니다':'저장되었습니다');
   });
   // 구역이 '타교회'일 때만 교회명 입력칸 표시
@@ -1126,11 +1157,11 @@ function openTargetSheet(target, isNew){
       const idx = DB.targets.findIndex(x=>x.id===t.id);
       const removed = idx>=0 ? DB.targets[idx] : null;
       DB.targets = DB.targets.filter(x=>x.id!==t.id);
-      saveDB(); closeSheet(); render();
+      saveDB(); closeSheet(); rerenderPreserve();
       if(removed){
         toastAction(`'${removed.name||'대상자'}' 삭제됨`, '되돌리기', ()=>{
           DB.targets.splice(Math.min(idx, DB.targets.length), 0, removed);
-          saveDB(); render(); toast('복구되었습니다');
+          saveDB(); rerenderPreserve(); toast('복구되었습니다');
         });
       } else toast('삭제되었습니다');
     });
