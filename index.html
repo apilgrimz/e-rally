@@ -660,11 +660,15 @@ function fitScrollers(){
           : document.documentElement.classList.contains('fs-lg') ? 1.13 : 1;
   const vb = view.getBoundingClientRect().bottom;
   const padB = parseFloat(getComputedStyle(view).paddingBottom) || 0;
+  const vTop = view.scrollTop;
   $$('#view .tbl-scroll, #view .pl-wrap').forEach(el=>{
+    const prev = el.scrollTop;
     const top = el.getBoundingClientRect().top;
     const avail = (vb - padB - top - 6) / z;
     el.style.maxHeight = Math.max(160, Math.round(avail)) + 'px';
+    el.scrollTop = prev;            // 높이 재설정 후 스크롤 위치 복원(튐 방지)
   });
+  view.scrollTop = vTop;
 }
 function refreshTopbar(){
   $('#topbarSub').textContent = DB.meta.title && DB.meta.title!=='전도집회' ? DB.meta.title : (DB.meta.period || '명단 관리');
@@ -2137,8 +2141,15 @@ function syncLeave(){
 $$('.tabbar button').forEach(b=> b.onclick = ()=> setTab(b.dataset.tab));
 applyFontScale();
 setTab('status');
-window.addEventListener('resize', fitScrollers);
-if(window.visualViewport) window.visualViewport.addEventListener('resize', fitScrollers);
+let _lastVH = window.innerHeight;
+function onViewportResize(){
+  const vh = window.innerHeight;
+  if(Math.abs(vh - _lastVH) < 80) return;   // 주소창 접힘 같은 작은 변화는 무시(스크롤 튐 방지)
+  _lastVH = vh;
+  fitScrollers();
+}
+window.addEventListener('resize', onViewportResize);
+window.addEventListener('orientationchange', ()=> setTimeout(()=>{ _lastVH = window.innerHeight; fitScrollers(); }, 250));
 
 window.addEventListener('load', ()=>{ try{ fbInit(); }catch(e){ console.error(e); } });
 window.addEventListener('online', ()=>{ if(DB.roomCode) setSyncStatus('live'); });
