@@ -439,18 +439,22 @@ let VAULT = null;   // { events:[...], activeId }
 let DB = null;      // active event
 let currentTab = 'status';
 
+/* 대상자 1명 기본값 채우기 (로컬·서버 공통) */
+function hydrateTarget(t){
+  if(!t) return t;
+  if(!t.attend) t.attend = {};
+  if(t.enrolled===undefined) t.enrolled = false;
+  if(t.church===undefined) t.church = '';
+  if(t.inPray===undefined) t.inPray = true;   // 값이 없으면 기도명단에 포함(기존 데이터 보존)
+  return t;
+}
 function hydrateEvent(ev){
   ev.meta = ev.meta || {}; ev.settings = ev.settings || {};
   if(!Array.isArray(ev.settings.zones) || !ev.settings.zones.length) ev.settings.zones = DEFAULT_ZONES.slice();
   ev.settings.zones.sort(zoneCmp);
   if(!Array.isArray(ev.settings.days) || !ev.settings.days.length) ev.settings.days = defaultDays();
   ev.targets = Array.isArray(ev.targets) ? ev.targets : [];
-  ev.targets.forEach(t=>{
-    if(!t.attend) t.attend = {};
-    if(t.enrolled===undefined) t.enrolled = false;
-    if(t.church===undefined) t.church = '';
-    if(t.inPray===undefined) t.inPray = true;
-  });
+  ev.targets.forEach(hydrateTarget);
   ev.plan = migratePlan(ev.plan);
   ev.chanmap = migrateChan(ev.chanmap);
   if(ev.roomCode===undefined) ev.roomCode = null;
@@ -2041,7 +2045,7 @@ function onTargetsSnap(qs){
   if(sync.firstSnap.targets){
     sync.firstSnap.targets = false;
     const server = []; const nm = {};
-    qs.docs.forEach(doc=>{ const d=doc.data()||{}; d.id=d.id||doc.id; server.push(d); nm[doc.id]=stableStr(d); });
+    qs.docs.forEach(doc=>{ const d=doc.data()||{}; d.id=d.id||doc.id; hydrateTarget(d); server.push(d); nm[doc.id]=stableStr(d); });
     const changed = stableStr(DB.targets) !== stableStr(server);
     sync.mirror.targets = nm;
     DB.targets = server;
@@ -2053,7 +2057,7 @@ function onTargetsSnap(qs){
   const byId={}; DB.targets.forEach(x=> byId[String(x.id)]=x);
   let changed=false;
   qs.docChanges().forEach(ch=>{
-    const id=ch.doc.id, d=ch.doc.data()||{}; d.id=d.id||id;
+    const id=ch.doc.id, d=ch.doc.data()||{}; d.id=d.id||id; hydrateTarget(d);
     if(ch.type==='removed'){
       if(byId[id]){ DB.targets=DB.targets.filter(x=>String(x.id)!==String(id)); delete byId[id]; if(sync.mirror.targets) delete sync.mirror.targets[id]; changed=true; }
     }else{
