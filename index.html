@@ -2009,11 +2009,15 @@ function onTargetsSnap(qs){
   if(!sync.mirror) sync.mirror = snapOf(DB);
   if(sync.firstSnap.targets){
     sync.firstSnap.targets = false;
-    const server = []; sync.mirror.targets = {};
-    qs.docs.forEach(doc=>{ const d=doc.data()||{}; d.id=d.id||doc.id; server.push(d); sync.mirror.targets[doc.id]=stableStr(d); });
+    const server = []; const nm = {};
+    qs.docs.forEach(doc=>{ const d=doc.data()||{}; d.id=d.id||doc.id; server.push(d); nm[doc.id]=stableStr(d); });
+    const changed = stableStr(DB.targets) !== stableStr(server);
+    sync.mirror.targets = nm;
     DB.targets = server;
     sync.applyingRemote=true; saveVault(); sync.applyingRemote=false;
-    setSyncStatus(navigator.onLine?'live':'offline'); render(); return;
+    setSyncStatus(navigator.onLine?'live':'offline');
+    if(changed) rerenderPreserve();   // 변경이 있을 때만, 스크롤 위치 보존하며 갱신
+    return;
   }
   const byId={}; DB.targets.forEach(x=> byId[String(x.id)]=x);
   let changed=false;
