@@ -704,14 +704,15 @@ function renderStatus(){
      </div>
    </div>`;
 
-  if(!all.length){
-    return html + `<div class="empty-state">아직 등록된 대상자가 없습니다.<br><b>기도명단</b>에서 참석을 체크하면 여기에 나타납니다.</div>`;
-  }
   html += filterBarHTML();
   html += `<div id="listArea">` + statusListHTML() + `</div>`;
   return html;
 }
 function statusListHTML(){
+  const all = enrolledTargets();
+  if(!all.length){
+    return `<div class="empty-state">전도현황에 등록된 대상자가 없습니다.<br>오른쪽 <b>＋</b> 버튼이나 기도명단의 참석 체크로 추가할 수 있어요.</div>`;
+  }
   const visible = statusVisible();
   const days = DB.settings.days;
   if(!visible.length){
@@ -774,7 +775,7 @@ function praySmallText(){
   return `대상자 ${list.length}명 · 참석 ${enrolled}명${(filterQ||filterZone)?` · 표시 ${vis}명`:''}`;
 }
 function renderPray(){
-  const list = sortedTargets();
+  const list = prayTargets();
   let html = `
    <div class="view-head">
      <div class="vt">기도 명단<small id="vtSmall">${praySmallText()}</small></div>
@@ -783,14 +784,15 @@ function renderPray(){
        <button class="btn btn-secondary btn-sm" data-act="print-pray">🖨 인쇄</button>
      </div>
    </div>`;
-  if(!list.length){
-    return html + `<div class="empty-state">아직 대상자가 없습니다.<br>아래 버튼으로 대상자를 추가하세요.${DB.viewerOnly?'':`<div style="margin-top:16px"><button class="btn btn-primary" id="emptyAdd">＋ 대상자 추가</button></div>`}</div>`;
-  }
   html += filterBarHTML();
   html += `<div id="listArea">` + prayListHTML() + `</div>`;
   return html;
 }
 function prayListHTML(){
+  const all = prayTargets();
+  if(!all.length){
+    return `<div class="empty-state">아직 대상자가 없습니다.<br>오른쪽 <b>＋</b> 버튼으로 추가하세요.${DB.viewerOnly?'':`<div style="margin-top:16px"><button class="btn btn-primary" id="emptyAdd">＋ 대상자 추가</button></div>`}</div>`;
+  }
   const visible = prayVisible();
   if(!visible.length){
     return `<div class="empty-state">검색 결과가 없습니다.</div>`;
