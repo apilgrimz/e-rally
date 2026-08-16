@@ -390,7 +390,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.08.16-22';
+const APP_VERSION = '2026.08.16-23';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -890,7 +890,7 @@ function renderPlan(){
   html += `<div class="plan-head"><div class="pt">${esc(planTitle)}</div>${planSub?`<div class="ps">${esc(planSub)}</div>`:''}</div>`;
   if(p.topNotes && p.topNotes.length && p.topNotes.some(n=>n)){
     html += `<div class="plan-notes">`;
-    p.topNotes.forEach(n=>{ if(n) html += `<div class="pn">${esc(n)}</div>`; });
+    p.topNotes.forEach(n=>{ if(n) html += `<div class="pn">${escBr(n)}</div>`; });
     html += `</div>`;
   }
   const grid = buildPlanGrid(false);
@@ -1336,10 +1336,10 @@ function notesTwoCol(notes){
   notes = (notes||[]).filter(Boolean);
   if(!notes.length) return '';
   if(notes.length<=2){
-    return `<div class="pr-notes"><div class="pr-ncol">` + notes.map(n=>`<div class="pr-note">${esc(n)}</div>`).join('') + `</div><div class="pr-ncol"></div></div>`;
+    return `<div class="pr-notes"><div class="pr-ncol">` + notes.map(n=>`<div class="pr-note">${escBr(n)}</div>`).join('') + `</div><div class="pr-ncol"></div></div>`;
   }
   const half = Math.ceil(notes.length/2);
-  const col = arr => `<div class="pr-ncol">` + arr.map(n=>`<div class="pr-note">${esc(n)}</div>`).join('') + `</div>`;
+  const col = arr => `<div class="pr-ncol">` + arr.map(n=>`<div class="pr-note">${escBr(n)}</div>`).join('') + `</div>`;
   return `<div class="pr-notes">${col(notes.slice(0,half))}${col(notes.slice(half))}</div>`;
 }
 function prTitle(docType, extra){
