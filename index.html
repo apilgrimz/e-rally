@@ -390,7 +390,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.08.16-23';
+const APP_VERSION = '2026.08.16-24';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -1198,7 +1198,7 @@ function openPlanSheet(){
   p.topNotes = p.topNotes||[]; p.dayLabels = p.dayLabels||[]; p.rows = p.rows||[];
 
   function collect(){
-    p.topNotes.forEach((_,i)=>{ const t=$(`[data-tn="${i}"]`); if(t) p.topNotes[i]=t.value; });
+    const tnOne=$('#tn-one'); if(tnOne) p.topNotes = tnOne.value.trim() ? [tnOne.value.trim()] : [];
     p.dayLabels.forEach((_,i)=>{ const d=$(`[data-dl="${i}"]`); if(d) p.dayLabels[i]=d.value; });
     p.rows.forEach((r,i)=>{
       const c=$(`[data-rc="${i}"]`); if(c) r.cat=c.value;
@@ -1209,9 +1209,8 @@ function openPlanSheet(){
   }
   function renderEditor(){
     let h = `<div class="muted" style="margin-bottom:6px">제목·기간·강사는 <b>설정</b>의 집회 정보에서 자동으로 들어갑니다.<br>줄을 나누려면 <b>//</b> 를 넣으세요. (예: 김철수//이영희)</div>`;
-    h += `<div class="section-title">상단 안내문</div><div id="tn-list">`;
-    p.topNotes.forEach((n,i)=>{ h += `<div class="editrow"><textarea data-tn="${i}" rows="2" placeholder="안내문">${esc(n)}</textarea><button class="x" data-tnx="${i}">✕</button></div>`; });
-    h += `</div><button class="btn btn-secondary btn-sm" id="tn-add">＋ 안내문 추가</button>`;
+    h += `<div class="section-title">상단 안내문</div>
+      <textarea id="tn-one" rows="4" placeholder="안내문 (줄을 나누려면 // 를 넣으세요)">${esc((p.topNotes||[]).filter(Boolean).join('//'))}</textarea>`;
     h += `<div class="section-title">일자 (열 제목)</div><div id="dl-list">`;
     p.dayLabels.forEach((d,i)=>{ h += `<div class="editrow"><input data-dl="${i}" value="${esc(d)}" placeholder="예) 9(월)"/><button class="x" data-dlx="${i}">✕</button></div>`; });
     h += `</div><div class="editrow"><input id="dl-new" placeholder="일자 추가 (예: 15(주일))"/><button class="btn btn-secondary btn-sm" id="dl-add">추가</button></div>`;
@@ -1241,8 +1240,6 @@ function openPlanSheet(){
     bindEditor();
   }
   function bindEditor(){
-    $('#tn-add').onclick = ()=>{ collect(); p.topNotes.push(''); renderEditor(); };
-    $$('[data-tnx]').forEach(b=> b.onclick=()=>{ collect(); p.topNotes.splice(+b.dataset.tnx,1); renderEditor(); });
     $('#dl-add').onclick = ()=>{ collect(); const v=$('#dl-new').value.trim(); if(v){ p.dayLabels.push(v); p.rows.forEach(r=>{ r.cells=r.cells||[]; r.cells.push(''); }); } renderEditor(); };
     $$('[data-dlx]').forEach(b=> b.onclick=()=>{ if(p.dayLabels.length<=1){ toast('최소 1개의 일자가 필요해요'); return; } collect(); const i=+b.dataset.dlx; p.dayLabels.splice(i,1); p.rows.forEach(r=> r.cells&&r.cells.splice(i,1)); renderEditor(); });
     $$('[data-mode]').forEach(b=> b.onclick=()=>{ collect(); p.rows[+b.dataset.ri].mode = b.dataset.mode; renderEditor(); });
@@ -1276,7 +1273,7 @@ function openChanSheet(){
       r.cells=r.cells||[]; c.divisions.forEach((_,di)=>{ const cc=$(`[data-crc="${i}_${di}"]`); if(cc) r.cells[di]=cc.value; });
     });
     c.fixed.forEach((f,i)=>{ const fl=$(`[data-cfl="${i}"]`), fv=$(`[data-cfv="${i}"]`); if(fl) f.label=fl.value; if(fv) f.value=fv.value; });
-    c.notes.forEach((_,i)=>{ const n=$(`[data-cnt="${i}"]`); if(n) c.notes[i]=n.value; });
+    const cntOne=$('#cnt-one'); if(cntOne) c.notes = cntOne.value.trim() ? [cntOne.value.trim()] : [];
   }
   function renderEditor(){
     let h = `<div class="muted" style="margin-bottom:6px">줄을 나누려면 <b>//</b> 를 넣으세요. (예: 김철수//이영희)</div>
@@ -1302,8 +1299,8 @@ function openChanSheet(){
     h += `</div><button class="btn btn-secondary btn-sm" id="cf-add">＋ 고정 열 추가</button>`;
 
     h += `<div class="section-title">안내문</div><div id="cn-list">`;
-    c.notes.forEach((n,i)=>{ h += `<div class="editrow"><textarea data-cnt="${i}" rows="2" placeholder="안내문">${esc(n)}</textarea><button class="x" data-cnx="${i}">✕</button></div>`; });
-    h += `</div><button class="btn btn-secondary btn-sm" id="cn-add">＋ 안내문 추가</button>`;
+    h += `<textarea id="cnt-one" rows="4" placeholder="안내문 (줄을 나누려면 // 를 넣으세요)">${esc((c.notes||[]).filter(Boolean).join('//'))}</textarea>`;
+    h += `</div>`;
 
     $('#sheetBody').innerHTML = h;
     bindCe();
@@ -1317,8 +1314,6 @@ function openChanSheet(){
     $$('[data-cdown]').forEach(b=> b.onclick=()=>{ collect(); const i=+b.dataset.cdown; if(i<c.roles.length-1){ const t=c.roles[i+1]; c.roles[i+1]=c.roles[i]; c.roles[i]=t; } renderEditor(); });
     $('#cf-add').onclick = ()=>{ collect(); c.fixed.push({label:'',value:''}); renderEditor(); };
     $$('[data-cfx]').forEach(b=> b.onclick=()=>{ collect(); c.fixed.splice(+b.dataset.cfx,1); renderEditor(); });
-    $('#cn-add').onclick = ()=>{ collect(); c.notes.push(''); renderEditor(); };
-    $$('[data-cnx]').forEach(b=> b.onclick=()=>{ collect(); c.notes.splice(+b.dataset.cnx,1); renderEditor(); });
   }
   openSheet('배치도 편집', '', ()=>{
     collect(); c.schema = 1; if(c.enabled===undefined) c.enabled=true;
@@ -1335,12 +1330,8 @@ function openChanSheet(){
 function notesTwoCol(notes){
   notes = (notes||[]).filter(Boolean);
   if(!notes.length) return '';
-  if(notes.length<=2){
-    return `<div class="pr-notes"><div class="pr-ncol">` + notes.map(n=>`<div class="pr-note">${escBr(n)}</div>`).join('') + `</div><div class="pr-ncol"></div></div>`;
-  }
-  const half = Math.ceil(notes.length/2);
-  const col = arr => `<div class="pr-ncol">` + arr.map(n=>`<div class="pr-note">${escBr(n)}</div>`).join('') + `</div>`;
-  return `<div class="pr-notes">${col(notes.slice(0,half))}${col(notes.slice(half))}</div>`;
+  // 한 흐름으로 표시 (줄바꿈은 // 로 조정)
+  return `<div class="pr-notes">` + notes.map(n=>`<div class="pr-note">${escBr(n)}</div>`).join('') + `</div>`;
 }
 function prTitle(docType, extra){
   const name = [esc(DB.meta.churchName||''), esc(DB.meta.title||'')].filter(Boolean).join(' ');
@@ -1498,7 +1489,7 @@ function renderChan(){
   if(grid) h += `<div class="ptbl-scroll" style="margin-top:6px">${grid}</div><div class="muted" style="margin-top:4px">표를 누르면 편집할 수 있어요.</div>`;
   if(c.notes && c.notes.some(n=>n)){
     h += `<div class="plan-notes" style="margin-top:10px">`;
-    c.notes.forEach(n=>{ if(n) h += `<div class="pn">${esc(n)}</div>`; });
+    c.notes.forEach(n=>{ if(n) h += `<div class="pn">${escBr(n)}</div>`; });
     h += `</div>`;
   }
   return h;
@@ -1517,17 +1508,16 @@ function printCSS(orient){
     * { box-sizing:border-box; }
     body { font-family:'Pretendard Variable',Pretendard,'Apple SD Gothic Neo','Malgun Gothic',sans-serif; margin:0; color:#1b1f2e; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     .pr-title { text-align:center; font-size:22px; font-weight:800; letter-spacing:-.01em; margin:0 0 3px; color:#101631; }
-    .pr-sub { text-align:center; font-size:13px; font-weight:500; letter-spacing:.01em; margin:0 0 2px; color:#6b7280; }
+    .pr-sub { text-align:center; font-size:13px; font-weight:500; letter-spacing:.02em; margin:0 0 2px; color:#7a8496; }
     .pr-rule { width:52px; height:2.5px; background:#c79a3c; border-radius:2px; margin:8px auto 14px; }
-    .pr-note { font-size:11.5px; color:#374151; margin:0 0 4px; line-height:1.5; }
-    .pr-notes { display:flex; gap:0 22px; margin:0 0 9px; }
-    .pr-ncol { flex:1; }
-    .pr-ncol .pr-note { margin:0 0 3px; }
+    .pr-note { font-size:11.5px; color:#374151; margin:0; line-height:1.6; }
+    .pr-notes { margin:0 0 11px; padding:9px 13px; background:#f7f8fb; border-left:3px solid #c79a3c; border-radius:0 7px 7px 0; }
     .chan-wrap { max-width:150mm; margin:0 auto; }
     .chan-wrap table.pr { margin-bottom:9px; }
     table.pr { border-collapse:collapse; width:100%; table-layout:fixed; border:1.7px solid #101631; }
-    table.pr th, table.pr td { border:.7px solid #c2c7d2; padding:5px 4px; text-align:center; font-size:12px; color:#1b1f2e; word-break:keep-all; vertical-align:middle; line-height:1.4; }
-    table.pr thead th { background:#101631; color:#fff; font-weight:700; font-size:11.5px; letter-spacing:.02em; border-color:#101631; padding:6px 4px; }
+    table.pr th, table.pr td { border:.7px solid #ccd1dc; padding:5px 4px; text-align:center; font-size:12px; color:#1b1f2e; word-break:keep-all; vertical-align:middle; line-height:1.45; }
+    table.pr thead th { background:#101631; color:#fff; font-weight:700; font-size:11.5px; letter-spacing:.03em; border-color:#101631; padding:7px 4px; }
+    table.pr tbody tr:nth-child(even) td { background:#fafbfd; }
     table.pr td.nm { font-weight:700; font-size:13px; color:#101631; }
     table.pr .dupname { font-weight:800; color:#1d4ed8; }
     table.pr td.lb { background:#f2f4f9; font-weight:700; color:#2c3350; }
@@ -1602,20 +1592,19 @@ async function exportImage(view){
   stage.style.cssText = `position:absolute; left:-99999px; top:0; background:#fff; color:#1b1f2e; padding:26px 24px; ${orient==='landscape'?'width:1400px':'width:920px'}; font-family:'Pretendard Variable',Pretendard,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;`;
   stage.innerHTML = `<style>
     .pr-title{text-align:center;font-size:33px;font-weight:800;letter-spacing:-.01em;margin:0 0 5px;color:#101631}
-    .pr-sub{text-align:center;font-size:18px;font-weight:500;margin:0 0 2px;color:#6b7280}
+    .pr-sub{text-align:center;font-size:18px;font-weight:500;letter-spacing:.02em;margin:0 0 2px;color:#7a8496}
     .pr-rule{width:70px;height:3px;background:#c79a3c;border-radius:2px;margin:13px auto 22px}
     table.pr{border-collapse:collapse;width:100%;table-layout:fixed;border:2.2px solid #101631}
-    table.pr th,table.pr td{border:1px solid #c2c7d2;padding:10px 6px;text-align:center;font-size:17.5px;color:#1b1f2e;word-break:keep-all;vertical-align:middle;line-height:1.4}
-    table.pr thead th{background:#101631;color:#fff;font-weight:700;font-size:17px;letter-spacing:.02em;border-color:#101631}
+    table.pr th,table.pr td{border:1px solid #ccd1dc;padding:10px 6px;text-align:center;font-size:17.5px;color:#1b1f2e;word-break:keep-all;vertical-align:middle;line-height:1.45}
+    table.pr thead th{background:#101631;color:#fff;font-weight:700;font-size:17px;letter-spacing:.03em;border-color:#101631;padding:12px 6px}
+    table.pr tbody tr:nth-child(even) td{background:#fafbfd}
     table.pr td.nm{font-weight:700;font-size:18.5px;color:#101631}
     table.pr .dupname{font-weight:800;color:#1d4ed8}
     table.pr td.lb{background:#f2f4f9;font-weight:700;color:#2c3350}
     table.pr td.sum{background:#e9ecf5;font-weight:700;color:#101631}
     table.pr td.mv{text-align:center}
-    .pr-note{font-size:15.5px;color:#374151;margin:0 0 6px;line-height:1.5}
-    .pr-notes{display:flex;gap:0 26px}
-    .pr-ncol{flex:1}
-    .pr-ncol .pr-note{margin:0 0 5px}
+    .pr-note{font-size:15.5px;color:#374151;margin:0;line-height:1.65}
+    .pr-notes{margin:0 0 18px;padding:13px 18px;background:#f7f8fb;border-left:4px solid #c79a3c;border-radius:0 9px 9px 0}
     .chan-wrap{max-width:640px;margin:0 auto}
     .chan-wrap table.pr{margin-bottom:14px}
     .pr-split{display:flex;gap:18px;align-items:flex-start}
