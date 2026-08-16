@@ -390,7 +390,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.08.16-24';
+const APP_VERSION = '2026.08.16-25';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -818,20 +818,26 @@ function prayListHTML(){
 
 /* ----- 집회계획 ----- */
 // 따옴표(곡명·식당명 등) 문구는 줄바꿈하여 별도 행에 표시
-function escBr(v){ return esc(v==null?'':String(v)).replace(/\n/g,'<br>').replace(/\/\//g,'<br>'); }
+function escBr(v){
+  return esc(v==null?'':String(v))
+    .replace(/\n/g,'<br>')
+    .replace(/\/\//g,'<br>')
+    .replace(/ {2,}/g, m => '&nbsp;'.repeat(m.length));   // 연속 공백 그대로 유지
+}
 function planCell(v){
   v = (v==null ? '' : String(v));
-  // '//' 는 줄바꿈으로 표시
-  if(v.includes('//')) return v.split('//').map(x=> esc(x.trim())).join('<br>');
+  // '//' 는 줄바꿈으로 표시 (연속 공백은 그대로 유지)
+  const keepSp = t => esc(t).replace(/ {2,}/g, m => '&nbsp;'.repeat(m.length));
+  if(v.includes('//')) return v.split('//').map(x=> keepSp(x)).join('<br>');
   const m = v.match(/[“"][^”"]*[”"]/);
   if(m){
     const idx = v.indexOf(m[0]);
     const before = v.slice(0, idx).replace(/\s+$/,'');
     const quoted = m[0];
     const after = v.slice(idx + m[0].length).replace(/^\s+/,'');
-    return [before, quoted, after].filter(s=> s!=='').map(esc).join('<br>');
+    return [before, quoted, after].filter(s=> s!=='').map(keepSp).join('<br>');
   }
-  return esc(v).replace(/\n/g, '<br>');
+  return keepSp(v).replace(/\n/g, '<br>');
 }
 function buildPlanGrid(forPrint){
   const p = DB.plan;
@@ -1509,7 +1515,7 @@ function printCSS(orient){
     body { font-family:'Pretendard Variable',Pretendard,'Apple SD Gothic Neo','Malgun Gothic',sans-serif; margin:0; color:#1b1f2e; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     .pr-title { text-align:center; font-size:22px; font-weight:800; letter-spacing:-.01em; margin:0 0 3px; color:#101631; }
     .pr-sub { text-align:center; font-size:13px; font-weight:500; letter-spacing:.02em; margin:0 0 2px; color:#7a8496; }
-    .pr-rule { width:52px; height:2.5px; background:#c79a3c; border-radius:2px; margin:8px auto 14px; }
+    .pr-rule { height:0; margin:0 0 13px; }
     .pr-note { font-size:11.5px; color:#374151; margin:0; line-height:1.6; }
     .pr-notes { margin:0 0 11px; padding:9px 13px; background:#f7f8fb; border-left:3px solid #c79a3c; border-radius:0 7px 7px 0; }
     .chan-wrap { max-width:150mm; margin:0 auto; }
@@ -1539,7 +1545,7 @@ function doPrint(view){
     @page { size:A4 ${orient}; margin:${marginMM}mm; }
     .pr-title{font-size:18px;margin:0 0 2px}
     .pr-sub{font-size:11px}
-    .pr-rule{margin:6px auto 9px}
+    .pr-rule{height:0;margin:0 0 8px}
     table.pr th, table.pr td{font-size:10.5px;padding:3px 3px;line-height:1.28}
     table.pr thead th{font-size:10px;padding:4px 3px}
     table.pr td.nm{font-size:11px}
@@ -1593,7 +1599,7 @@ async function exportImage(view){
   stage.innerHTML = `<style>
     .pr-title{text-align:center;font-size:33px;font-weight:800;letter-spacing:-.01em;margin:0 0 5px;color:#101631}
     .pr-sub{text-align:center;font-size:18px;font-weight:500;letter-spacing:.02em;margin:0 0 2px;color:#7a8496}
-    .pr-rule{width:70px;height:3px;background:#c79a3c;border-radius:2px;margin:13px auto 22px}
+    .pr-rule{height:0;margin:0 0 20px}
     table.pr{border-collapse:collapse;width:100%;table-layout:fixed;border:2.2px solid #101631}
     table.pr th,table.pr td{border:1px solid #ccd1dc;padding:10px 6px;text-align:center;font-size:17.5px;color:#1b1f2e;word-break:keep-all;vertical-align:middle;line-height:1.45}
     table.pr thead th{background:#101631;color:#fff;font-weight:700;font-size:17px;letter-spacing:.03em;border-color:#101631;padding:12px 6px}
