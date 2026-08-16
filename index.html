@@ -395,7 +395,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.08.16-19';
+const APP_VERSION = '2026.08.16-20';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -823,6 +823,7 @@ function prayListHTML(){
 
 /* ----- 집회계획 ----- */
 // 따옴표(곡명·식당명 등) 문구는 줄바꿈하여 별도 행에 표시
+function escBr(v){ return esc(v==null?'':String(v)).replace(/\n/g,'<br>'); }
 function planCell(v){
   v = (v==null ? '' : String(v));
   const m = v.match(/[“"][^”"]*[”"]/);
@@ -861,10 +862,10 @@ function buildPlanGrid(forPrint){
   rows.forEach((r,i)=>{
     body += `<tr${forPrint?'':` data-prow="${i}"`}>`;
     if(r.cat){
-      if(catSpans[i]>0) body += `<td class="${T.cat}" rowspan="${catSpans[i]}">${esc(r.cat)}</td>`;
-      body += `<td class="${T.lbl}">${esc(r.label)}</td>`;
+      if(catSpans[i]>0) body += `<td class="${T.cat}" rowspan="${catSpans[i]}">${escBr(r.cat)}</td>`;
+      body += `<td class="${T.lbl}">${escBr(r.label)}</td>`;
     }else{
-      body += `<td class="${T.lbl2}" colspan="2">${esc(r.label)}</td>`;
+      body += `<td class="${T.lbl2}" colspan="2">${escBr(r.label)}</td>`;
     }
     if(r.mode==='merged'){
       body += `<td class="${T.mv}" colspan="${nd}">${planCell(r.value)}</td>`;
@@ -1198,11 +1199,9 @@ function bindBrButtons(){
     e.preventDefault();
     const key = b.dataset.br;
     const p = key.split('_');
-    let sel = null;
-    if(p[0]==='rcell') sel = `[data-rcell="${p[1]}_${p[2]}"]`;
-    else if(p[0]==='crc') sel = `[data-crc="${p[1]}_${p[2]}"]`;
-    else if(p[0]==='cfv') sel = `[data-cfv="${p[1]}"]`;
-    const el = sel ? $(sel) : null;
+    const attr = p[0];                      // rcell · crc · rc · rl · crl · cdv · cfl · cfv · dl
+    const val = p.slice(1).join('_');       // 인덱스 (셀은 i_di)
+    const el = $(`[data-${attr}="${val}"]`);
     if(!el) return;
     const st = (el.selectionStart==null) ? el.value.length : el.selectionStart;
     const en = (el.selectionEnd==null) ? el.value.length : el.selectionEnd;
@@ -1212,7 +1211,7 @@ function bindBrButtons(){
     markMultiline(el);
   });
   // 현재 값에 줄바꿈이 있는 칸 표시
-  $$('[data-rcell], [data-crc], [data-cfv]').forEach(el=>{
+  $$('[data-rcell], [data-crc], [data-cfv], [data-rc], [data-rl], [data-crl], [data-cdv], [data-cfl], [data-dl]').forEach(el=>{
     markMultiline(el);
     el.oninput = ()=> markMultiline(el);
   });
@@ -1247,12 +1246,12 @@ function openPlanSheet(){
     p.topNotes.forEach((n,i)=>{ h += `<div class="editrow"><textarea data-tn="${i}" rows="2" placeholder="안내문">${esc(n)}</textarea><button class="x" data-tnx="${i}">✕</button></div>`; });
     h += `</div><button class="btn btn-secondary btn-sm" id="tn-add">＋ 안내문 추가</button>`;
     h += `<div class="section-title">일자 (열 제목)</div><div id="dl-list">`;
-    p.dayLabels.forEach((d,i)=>{ h += `<div class="editrow"><input data-dl="${i}" value="${esc(d)}" placeholder="예) 9(월)"/><button class="x" data-dlx="${i}">✕</button></div>`; });
+    p.dayLabels.forEach((d,i)=>{ h += `<div class="editrow"><div class="brwrap"><input data-dl="${i}" value="${esc(d)}" placeholder="예) 9(월)"/><button class="brbtn" data-br="dl_${i}" title="줄바꿈 넣기">↵</button></div><button class="x" data-dlx="${i}">✕</button></div>`; });
     h += `</div><div class="editrow"><input id="dl-new" placeholder="일자 추가 (예: 15(주일))"/><button class="btn btn-secondary btn-sm" id="dl-add">추가</button></div>`;
     h += `<div class="section-title">항목 (${p.rows.length})</div>`;
     p.rows.forEach((r,i)=>{
       h += `<div class="pe-row">
-        <div class="pe-top"><input class="cat" data-rc="${i}" value="${esc(r.cat)}" placeholder="구분(대분류, 선택)"/><input data-rl="${i}" value="${esc(r.label)}" placeholder="세부 항목"/></div>
+        <div class="pe-top"><div class="brwrap"><input class="cat" data-rc="${i}" value="${esc(r.cat)}" placeholder="구분(대분류, 선택)"/><button class="brbtn" data-br="rc_${i}" title="줄바꿈 넣기">↵</button></div><div class="brwrap"><input data-rl="${i}" value="${esc(r.label)}" placeholder="세부 항목"/><button class="brbtn" data-br="rl_${i}" title="줄바꿈 넣기">↵</button></div></div>
         <div class="pe-seg">
           <button data-mode="days" data-ri="${i}" class="${r.mode!=='merged'?'on':''}">요일별</button>
           <button data-mode="merged" data-ri="${i}" class="${r.mode==='merged'?'on':''}">공통(전체)</button>
@@ -1317,12 +1316,12 @@ function openChanSheet(){
     let h = `<div class="field"><label>제목</label><input id="ce-title" value="${esc(c.title)}" placeholder="성찬위원 배치도"/></div>
       <label style="display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:14px;"><input type="checkbox" id="ce-enabled" ${c.enabled?'checked':''} style="width:auto"/> 이 집회에서 사용</label>`;
     h += `<div class="section-title">분단 (열 제목)</div><div id="cdv-list">`;
-    c.divisions.forEach((d,i)=>{ h += `<div class="editrow"><input data-cdv="${i}" value="${esc(d)}" placeholder="예) 1분단"/><button class="x" data-cdvx="${i}">✕</button></div>`; });
+    c.divisions.forEach((d,i)=>{ h += `<div class="editrow"><div class="brwrap"><input data-cdv="${i}" value="${esc(d)}" placeholder="예) 1분단"/><button class="brbtn" data-br="cdv_${i}" title="줄바꿈 넣기">↵</button></div><button class="x" data-cdvx="${i}">✕</button></div>`; });
     h += `</div><div class="editrow"><input id="cdv-new" placeholder="분단 추가"/><button class="btn btn-secondary btn-sm" id="cdv-add">추가</button></div>`;
 
     h += `<div class="section-title">역할 (행)</div>`;
     c.roles.forEach((r,i)=>{
-      h += `<div class="pe-row"><div class="pe-top"><input data-crl="${i}" value="${esc(r.label)}" placeholder="역할명 (예: 비닐장갑)"/></div><div class="pe-days">`;
+      h += `<div class="pe-row"><div class="pe-top"><div class="brwrap"><input data-crl="${i}" value="${esc(r.label)}" placeholder="역할명 (예: 비닐장갑)"/><button class="brbtn" data-br="crl_${i}" title="줄바꿈 넣기">↵</button></div></div><div class="pe-days">`;
       c.divisions.forEach((d,di)=>{ h += `<div class="pe-d"><label>${esc(d)}</label><div class="brwrap"><input data-crc="${i}_${di}" value="${esc((r.cells||[])[di]||'')}" placeholder="(빈칸 가능)"/><button class="brbtn" data-br="crc_${i}_${di}" title="줄바꿈 넣기">↵</button></div></div>`; });
       h += `</div><div class="pe-acts">
         <button class="btn btn-secondary" data-cup="${i}" ${i===0?'disabled style="opacity:.4"':''}>↑</button>
@@ -1332,7 +1331,7 @@ function openChanSheet(){
     h += `<button class="btn btn-secondary btn-block" id="crl-add">＋ 역할 추가</button>`;
 
     h += `<div class="section-title">고정 열 (모든 역할에 공통, 예: 3층·5층)</div><div id="cf-list">`;
-    c.fixed.forEach((f,i)=>{ h += `<div class="editrow"><input data-cfl="${i}" value="${esc(f.label)}" placeholder="열 제목" style="max-width:34%"/><div class="brwrap"><input data-cfv="${i}" value="${esc(f.value)}" placeholder="담당자"/><button class="brbtn" data-br="cfv_${i}" title="줄바꿈 넣기">↵</button></div><button class="x" data-cfx="${i}">✕</button></div>`; });
+    c.fixed.forEach((f,i)=>{ h += `<div class="editrow"><div class="brwrap" style="max-width:40%"><input data-cfl="${i}" value="${esc(f.label)}" placeholder="열 제목"/><button class="brbtn" data-br="cfl_${i}" title="줄바꿈 넣기">↵</button></div><div class="brwrap"><input data-cfv="${i}" value="${esc(f.value)}" placeholder="담당자"/><button class="brbtn" data-br="cfv_${i}" title="줄바꿈 넣기">↵</button></div><button class="x" data-cfx="${i}">✕</button></div>`; });
     h += `</div><button class="btn btn-secondary btn-sm" id="cf-add">＋ 고정 열 추가</button>`;
 
     h += `<div class="section-title">안내문</div><div id="cn-list">`;
@@ -1490,12 +1489,12 @@ function buildChanGrid(forPrint){
     cols = `<colgroup><col style="width:19%">`+Array.from({length:totalCols-1},()=>`<col style="width:${rest}%">`).join('')+`</colgroup>`;
   }
   let head = `<thead><tr><th>구분</th>`;
-  c.divisions.forEach(d=> head += `<th>${esc(d)}</th>`);
-  c.fixed.forEach(f=> head += `<th>${esc(f.label)}</th>`);
+  c.divisions.forEach(d=> head += `<th>${escBr(d)}</th>`);
+  c.fixed.forEach(f=> head += `<th>${escBr(f.label)}</th>`);
   head += `</tr></thead>`;
   let body = '<tbody>';
   c.roles.forEach((r,i)=>{
-    body += `<tr${forPrint?'':' data-cedit="1"'}><td class="${T.lb}">${esc(r.label)}</td>`;
+    body += `<tr${forPrint?'':' data-cedit="1"'}><td class="${T.lb}">${escBr(r.label)}</td>`;
     c.divisions.forEach((_,di)=> body += `<td class="${T.cell}">${chanCell((r.cells||[])[di]||'', counts)}</td>`);
     if(i===0) c.fixed.forEach(f=> body += `<td class="${T.fx}" rowspan="${c.roles.length}">${chanCell(f.value, counts)}</td>`);
     body += `</tr>`;
