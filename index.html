@@ -225,7 +225,8 @@ table.ptbl tbody tr:active td { background:var(--bg-2); }
 .pe-seg button.on { background:var(--gold); color:#2A1F0A; font-weight:700; }
 .pe-days { display:grid; grid-template-columns:repeat(auto-fill,minmax(116px,1fr)); gap:6px; }
 .pe-d label { font-size:11px; color:var(--ink-mute); display:block; margin-bottom:2px; }
-.pe-d input { padding:7px 8px; font-size:13px; }
+.pe-d input, .pe-d textarea { padding:7px 8px; font-size:13px; }
+.pe-d textarea { min-height:56px; resize:vertical; line-height:1.4; }
 .pe-acts { display:flex; gap:6px; justify-content:flex-end; margin-top:8px; }
 .pe-acts button { padding:6px 10px; font-size:12px; border-radius:8px; }
 /* 성찬위원 배치도 */
@@ -1221,7 +1222,7 @@ function openPlanSheet(){
         h += `<textarea data-rv="${i}" rows="2" placeholder="모든 날 공통 내용">${esc(r.value)}</textarea>`;
       }else{
         h += `<div class="pe-days">`;
-        p.dayLabels.forEach((d,di)=>{ h += `<div class="pe-d"><label>${esc(d)}</label><input data-rcell="${i}_${di}" value="${esc((r.cells||[])[di]||'')}" placeholder="(빈칸 가능)"/></div>`; });
+        p.dayLabels.forEach((d,di)=>{ h += `<div class="pe-d"><label>${esc(d)}</label><textarea data-rcell="${i}_${di}" rows="2" placeholder="(빈칸 가능 · 줄바꿈 가능)">${esc((r.cells||[])[di]||'')}</textarea></div>`; });
         h += `</div>`;
       }
       h += `<div class="pe-acts">
@@ -1282,7 +1283,7 @@ function openChanSheet(){
     h += `<div class="section-title">역할 (행)</div>`;
     c.roles.forEach((r,i)=>{
       h += `<div class="pe-row"><div class="pe-top"><input data-crl="${i}" value="${esc(r.label)}" placeholder="역할명 (예: 비닐장갑)"/></div><div class="pe-days">`;
-      c.divisions.forEach((d,di)=>{ h += `<div class="pe-d"><label>${esc(d)}</label><input data-crc="${i}_${di}" value="${esc((r.cells||[])[di]||'')}" placeholder="(빈칸 가능)"/></div>`; });
+      c.divisions.forEach((d,di)=>{ h += `<div class="pe-d"><label>${esc(d)}</label><textarea data-crc="${i}_${di}" rows="2" placeholder="(빈칸 가능 · 줄바꿈 가능)">${esc((r.cells||[])[di]||'')}</textarea></div>`; });
       h += `</div><div class="pe-acts">
         <button class="btn btn-secondary" data-cup="${i}" ${i===0?'disabled style="opacity:.4"':''}>↑</button>
         <button class="btn btn-secondary" data-cdown="${i}" ${i===c.roles.length-1?'disabled style="opacity:.4"':''}>↓</button>
@@ -1291,7 +1292,7 @@ function openChanSheet(){
     h += `<button class="btn btn-secondary btn-block" id="crl-add">＋ 역할 추가</button>`;
 
     h += `<div class="section-title">고정 열 (모든 역할에 공통, 예: 3층·5층)</div><div id="cf-list">`;
-    c.fixed.forEach((f,i)=>{ h += `<div class="editrow"><input data-cfl="${i}" value="${esc(f.label)}" placeholder="열 제목" style="max-width:34%"/><input data-cfv="${i}" value="${esc(f.value)}" placeholder="담당자"/><button class="x" data-cfx="${i}">✕</button></div>`; });
+    c.fixed.forEach((f,i)=>{ h += `<div class="editrow"><input data-cfl="${i}" value="${esc(f.label)}" placeholder="열 제목" style="max-width:34%"/><textarea data-cfv="${i}" rows="2" placeholder="담당자 (줄바꿈 가능)">${esc(f.value)}</textarea><button class="x" data-cfx="${i}">✕</button></div>`; });
     h += `</div><button class="btn btn-secondary btn-sm" id="cf-add">＋ 고정 열 추가</button>`;
 
     h += `<div class="section-title">안내문</div><div id="cn-list">`;
@@ -1431,7 +1432,8 @@ function chanCell(v, counts){
   const s = String(v||'');
   if(!s.trim()) return '';
   return s.split(/([\s,，、·/]+)/).map(p=>{
-    if(p==='' || /^[\s,，、·/]+$/.test(p)) return esc(p);
+    if(p==='') return '';
+    if(/^[\s,，、·/]+$/.test(p)) return p.includes('\n') ? '<br>' : esc(p);
     return (counts[p.trim()]>=2) ? `<span class="dupname">${esc(p)}</span>` : esc(p);
   }).join('');
 }
