@@ -390,6 +390,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
+const APP_VERSION = '2026.08.16-16';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -1731,7 +1732,9 @@ function openSettingsSheet(){
       <div class="section-title">내보내기</div>
       <div class="list-row"><div class="lr-main"><div class="t">엑셀(CSV) 내보내기</div><div class="d">명단·출석을 엑셀 파일로 저장</div></div><button class="btn btn-secondary btn-sm" id="s-csv">저장</button></div>
       <div class="section-title">앱 공유하기</div>
-      <div class="list-row"><div class="lr-main"><div class="t">빈 앱 공유</div><div class="d">데이터 없이 앱만 다른 사람에게 공유</div></div><button class="btn btn-secondary btn-sm" id="s-shareapp">공유</button></div>`;
+      <div class="list-row"><div class="lr-main"><div class="t">빈 앱 공유</div><div class="d">데이터 없이 앱만 다른 사람에게 공유</div></div><button class="btn btn-secondary btn-sm" id="s-shareapp">공유</button></div>
+      <div class="section-title">앱 정보</div>
+      <div class="list-row"><div class="lr-main"><div class="t">버전</div><div class="d">${esc(APP_VERSION)}</div></div></div>`;
     openSheet('설정', body, null);
     renderSyncBox(); renderFsPills();
     $('#s-csv').onclick = exportCSV;
@@ -1768,6 +1771,9 @@ function openSettingsSheet(){
 
     <div class="section-title">앱 공유하기</div>
     <div class="list-row"><div class="lr-main"><div class="t">빈 앱 공유</div><div class="d">데이터 없이 앱만 다른 사람에게 공유</div></div><button class="btn btn-secondary btn-sm" id="s-shareapp">공유</button></div>
+
+    <div class="section-title">앱 정보</div>
+    <div class="list-row"><div class="lr-main"><div class="t">버전</div><div class="d">${esc(APP_VERSION)}</div></div></div>
 
     <div class="section-title">앱 설치</div>
     <div class="muted" id="install-note">홈 화면에 설치하면 앱처럼 사용할 수 있어요. (브라우저 메뉴 → "홈 화면에 추가")</div>
