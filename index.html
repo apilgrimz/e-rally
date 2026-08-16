@@ -227,6 +227,11 @@ table.ptbl tbody tr:active td { background:var(--bg-2); }
 .pe-d label { font-size:11px; color:var(--ink-mute); display:block; margin-bottom:2px; }
 .pe-d input, .pe-d textarea { padding:7px 8px; font-size:13px; }
 .pe-d textarea { min-height:56px; resize:vertical; line-height:1.4; }
+.brwrap { display:flex; gap:5px; align-items:stretch; flex:1; min-width:0; }
+.brwrap input { flex:1; min-width:0; }
+.brbtn { flex-shrink:0; width:34px; border-radius:9px; background:var(--bg-3); border:1px solid var(--line); color:var(--gold-soft); font-size:15px; font-weight:700; line-height:1; }
+.brbtn:active { transform:scale(.95); }
+input.has-br { border-color:var(--gold-deep); box-shadow:inset 0 0 0 1px rgba(255,200,87,.35); }
 .pe-acts { display:flex; gap:6px; justify-content:flex-end; margin-top:8px; }
 .pe-acts button { padding:6px 10px; font-size:12px; border-radius:8px; }
 /* 성찬위원 배치도 */
@@ -390,7 +395,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.08.16-16';
+const APP_VERSION = '2026.08.16-19';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -1187,6 +1192,39 @@ $('#fab').onclick = ()=>{
 /* =================================================================
  * 집회계획 편집 시트
  * ================================================================= */
+/* ↵ 버튼: 커서 위치에 줄바꿈 삽입 (키보드의 "다음" 키는 그대로 유지) */
+function bindBrButtons(){
+  $$('[data-br]').forEach(b=> b.onclick = (e)=>{
+    e.preventDefault();
+    const key = b.dataset.br;
+    const p = key.split('_');
+    let sel = null;
+    if(p[0]==='rcell') sel = `[data-rcell="${p[1]}_${p[2]}"]`;
+    else if(p[0]==='crc') sel = `[data-crc="${p[1]}_${p[2]}"]`;
+    else if(p[0]==='cfv') sel = `[data-cfv="${p[1]}"]`;
+    const el = sel ? $(sel) : null;
+    if(!el) return;
+    const st = (el.selectionStart==null) ? el.value.length : el.selectionStart;
+    const en = (el.selectionEnd==null) ? el.value.length : el.selectionEnd;
+    el.value = el.value.slice(0,st) + '\n' + el.value.slice(en);
+    try{ el.setSelectionRange(st+1, st+1); }catch(err){}
+    el.focus();
+    markMultiline(el);
+  });
+  // 현재 값에 줄바꿈이 있는 칸 표시
+  $$('[data-rcell], [data-crc], [data-cfv]').forEach(el=>{
+    markMultiline(el);
+    el.oninput = ()=> markMultiline(el);
+  });
+}
+/* 줄바꿈이 포함된 칸은 테두리로 표시(한 줄 입력칸이라 눈에 안 보이므로) */
+function markMultiline(el){
+  if(!el) return;
+  const has = String(el.value||'').includes('\n');
+  el.classList.toggle('has-br', has);
+  if(has) el.title = el.value.replace(/\n/g, ' ⏎ ');
+  else el.removeAttribute('title');
+}
 function openPlanSheet(){
   if(!canEdit()) return;
   const p = JSON.parse(JSON.stringify(DB.plan));
@@ -1223,7 +1261,7 @@ function openPlanSheet(){
         h += `<textarea data-rv="${i}" rows="2" placeholder="모든 날 공통 내용">${esc(r.value)}</textarea>`;
       }else{
         h += `<div class="pe-days">`;
-        p.dayLabels.forEach((d,di)=>{ h += `<div class="pe-d"><label>${esc(d)}</label><textarea data-rcell="${i}_${di}" rows="2" placeholder="(빈칸 가능 · 줄바꿈 가능)">${esc((r.cells||[])[di]||'')}</textarea></div>`; });
+        p.dayLabels.forEach((d,di)=>{ h += `<div class="pe-d"><label>${esc(d)}</label><div class="brwrap"><input data-rcell="${i}_${di}" value="${esc((r.cells||[])[di]||'')}" placeholder="(빈칸 가능)"/><button class="brbtn" data-br="rcell_${i}_${di}" title="줄바꿈 넣기">↵</button></div></div>`; });
         h += `</div>`;
       }
       h += `<div class="pe-acts">
@@ -1246,6 +1284,7 @@ function openPlanSheet(){
     $$('[data-down]').forEach(b=> b.onclick=()=>{ collect(); const i=+b.dataset.down; if(i<p.rows.length-1){ const t=p.rows[i+1]; p.rows[i+1]=p.rows[i]; p.rows[i]=t; } renderEditor(); });
     $$('[data-rx]').forEach(b=> b.onclick=()=>{ collect(); p.rows.splice(+b.dataset.rx,1); renderEditor(); });
     $('#rw-add').onclick = ()=>{ collect(); p.rows.push({cat:'',label:'',mode:'days',cells:p.dayLabels.map(()=> ''),value:''}); renderEditor(); };
+    bindBrButtons();
   }
   openSheet('집회 계획 편집', '', ()=>{
     collect(); p.schema = 2;
@@ -1284,7 +1323,7 @@ function openChanSheet(){
     h += `<div class="section-title">역할 (행)</div>`;
     c.roles.forEach((r,i)=>{
       h += `<div class="pe-row"><div class="pe-top"><input data-crl="${i}" value="${esc(r.label)}" placeholder="역할명 (예: 비닐장갑)"/></div><div class="pe-days">`;
-      c.divisions.forEach((d,di)=>{ h += `<div class="pe-d"><label>${esc(d)}</label><textarea data-crc="${i}_${di}" rows="2" placeholder="(빈칸 가능 · 줄바꿈 가능)">${esc((r.cells||[])[di]||'')}</textarea></div>`; });
+      c.divisions.forEach((d,di)=>{ h += `<div class="pe-d"><label>${esc(d)}</label><div class="brwrap"><input data-crc="${i}_${di}" value="${esc((r.cells||[])[di]||'')}" placeholder="(빈칸 가능)"/><button class="brbtn" data-br="crc_${i}_${di}" title="줄바꿈 넣기">↵</button></div></div>`; });
       h += `</div><div class="pe-acts">
         <button class="btn btn-secondary" data-cup="${i}" ${i===0?'disabled style="opacity:.4"':''}>↑</button>
         <button class="btn btn-secondary" data-cdown="${i}" ${i===c.roles.length-1?'disabled style="opacity:.4"':''}>↓</button>
@@ -1293,7 +1332,7 @@ function openChanSheet(){
     h += `<button class="btn btn-secondary btn-block" id="crl-add">＋ 역할 추가</button>`;
 
     h += `<div class="section-title">고정 열 (모든 역할에 공통, 예: 3층·5층)</div><div id="cf-list">`;
-    c.fixed.forEach((f,i)=>{ h += `<div class="editrow"><input data-cfl="${i}" value="${esc(f.label)}" placeholder="열 제목" style="max-width:34%"/><textarea data-cfv="${i}" rows="2" placeholder="담당자 (줄바꿈 가능)">${esc(f.value)}</textarea><button class="x" data-cfx="${i}">✕</button></div>`; });
+    c.fixed.forEach((f,i)=>{ h += `<div class="editrow"><input data-cfl="${i}" value="${esc(f.label)}" placeholder="열 제목" style="max-width:34%"/><div class="brwrap"><input data-cfv="${i}" value="${esc(f.value)}" placeholder="담당자"/><button class="brbtn" data-br="cfv_${i}" title="줄바꿈 넣기">↵</button></div><button class="x" data-cfx="${i}">✕</button></div>`; });
     h += `</div><button class="btn btn-secondary btn-sm" id="cf-add">＋ 고정 열 추가</button>`;
 
     h += `<div class="section-title">안내문</div><div id="cn-list">`;
@@ -1312,6 +1351,7 @@ function openChanSheet(){
     $$('[data-cdown]').forEach(b=> b.onclick=()=>{ collect(); const i=+b.dataset.cdown; if(i<c.roles.length-1){ const t=c.roles[i+1]; c.roles[i+1]=c.roles[i]; c.roles[i]=t; } renderEditor(); });
     $('#cf-add').onclick = ()=>{ collect(); c.fixed.push({label:'',value:''}); renderEditor(); };
     $$('[data-cfx]').forEach(b=> b.onclick=()=>{ collect(); c.fixed.splice(+b.dataset.cfx,1); renderEditor(); });
+    bindBrButtons();
     $('#cn-add').onclick = ()=>{ collect(); c.notes.push(''); renderEditor(); };
     $$('[data-cnx]').forEach(b=> b.onclick=()=>{ collect(); c.notes.splice(+b.dataset.cnx,1); renderEditor(); });
   }
