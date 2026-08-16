@@ -232,6 +232,7 @@ table.ptbl tbody tr:active td { background:var(--bg-2); }
 .brbtn { flex-shrink:0; width:34px; border-radius:9px; background:var(--bg-3); border:1px solid var(--line); color:var(--gold-soft); font-size:15px; font-weight:700; line-height:1; }
 .brbtn:active { transform:scale(.95); }
 input.has-br { border-color:var(--gold-deep); box-shadow:inset 0 0 0 1px rgba(255,200,87,.35); }
+.brwrap.has-br-wrap .brbtn { background:rgba(255,200,87,.2); border-color:var(--gold-deep); color:var(--gold); }
 .pe-acts { display:flex; gap:6px; justify-content:flex-end; margin-top:8px; }
 .pe-acts button { padding:6px 10px; font-size:12px; border-radius:8px; }
 /* 성찬위원 배치도 */
@@ -395,7 +396,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.08.16-20';
+const APP_VERSION = '2026.08.16-21';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -1195,34 +1196,59 @@ $('#fab').onclick = ()=>{
  * ================================================================= */
 /* ↵ 버튼: 커서 위치에 줄바꿈 삽입 (키보드의 "다음" 키는 그대로 유지) */
 function bindBrButtons(){
-  $$('[data-br]').forEach(b=> b.onclick = (e)=>{
-    e.preventDefault();
-    const key = b.dataset.br;
-    const p = key.split('_');
-    const attr = p[0];                      // rcell · crc · rc · rl · crl · cdv · cfl · cfv · dl
-    const val = p.slice(1).join('_');       // 인덱스 (셀은 i_di)
-    const el = $(`[data-${attr}="${val}"]`);
-    if(!el) return;
-    const st = (el.selectionStart==null) ? el.value.length : el.selectionStart;
-    const en = (el.selectionEnd==null) ? el.value.length : el.selectionEnd;
-    el.value = el.value.slice(0,st) + '\n' + el.value.slice(en);
-    try{ el.setSelectionRange(st+1, st+1); }catch(err){}
-    el.focus();
+  const FIELD_SEL = '[data-rcell], [data-crc], [data-cfv], [data-rc], [data-rl], [data-crl], [data-cdv], [data-cfl], [data-dl]';
+  // 입력칸의 커서 위치를 계속 기억해 둔다 (버튼을 누르면 포커스가 빠지며 위치가 사라지므로)
+  $$(FIELD_SEL).forEach(el=>{
+    const remember = ()=>{
+      if(el.selectionStart!=null){ el._cs = el.selectionStart; el._ce = el.selectionEnd; }
+    };
+    el.addEventListener('keyup', remember);
+    el.addEventListener('click', remember);
+    el.addEventListener('select', remember);
+    el.addEventListener('input', ()=>{ remember(); markMultiline(el); });
+    el.addEventListener('blur', remember);
     markMultiline(el);
   });
-  // 현재 값에 줄바꿈이 있는 칸 표시
-  $$('[data-rcell], [data-crc], [data-cfv], [data-rc], [data-rl], [data-crl], [data-cdv], [data-cfl], [data-dl]').forEach(el=>{
-    markMultiline(el);
-    el.oninput = ()=> markMultiline(el);
+
+  $$('[data-br]').forEach(b=>{
+    // 버튼이 포커스를 빼앗지 않도록 (커서 위치 보존)
+    b.addEventListener('mousedown', e=> e.preventDefault());
+    b.addEventListener('touchstart', e=> e.preventDefault(), {passive:false});
+    b.onclick = (e)=>{
+      e.preventDefault();
+      const p = b.dataset.br.split('_');
+      const attr = p[0];                 // rcell · crc · rc · rl · crl · cdv · cfl · cfv · dl
+      const val = p.slice(1).join('_');  // 인덱스 (셀은 i_di)
+      const el = $(`[data-${attr}="${val}"]`);
+      if(!el) return;
+      const len = el.value.length;
+      let st = (el._cs==null ? len : el._cs);
+      let en = (el._ce==null ? st : el._ce);
+      if(st>len) st=len;
+      if(en>len) en=len;
+      el.value = el.value.slice(0,st) + '\n' + el.value.slice(en);
+      el._cs = el._ce = st+1;
+      markMultiline(el);
+      el.focus();
+      try{ el.setSelectionRange(st+1, st+1); }catch(err){}
+    };
   });
 }
 /* 줄바꿈이 포함된 칸은 테두리로 표시(한 줄 입력칸이라 눈에 안 보이므로) */
 function markMultiline(el){
   if(!el) return;
-  const has = String(el.value||'').includes('\n');
+  const v = String(el.value||'');
+  const has = v.includes('\n');
   el.classList.toggle('has-br', has);
-  if(has) el.title = el.value.replace(/\n/g, ' ⏎ ');
-  else el.removeAttribute('title');
+  if(has){
+    el.title = v.replace(/\n/g, ' ⏎ ');
+    const wrap = el.closest('.brwrap');
+    if(wrap) wrap.classList.add('has-br-wrap');
+  }else{
+    el.removeAttribute('title');
+    const wrap = el.closest('.brwrap');
+    if(wrap) wrap.classList.remove('has-br-wrap');
+  }
 }
 function openPlanSheet(){
   if(!canEdit()) return;
