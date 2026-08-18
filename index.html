@@ -390,7 +390,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.08.16-26';
+const APP_VERSION = '2026.08.16-27';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -1514,20 +1514,20 @@ function printCSS(orient){
     * { box-sizing:border-box; }
     body { font-family:'Pretendard Variable',Pretendard,'Apple SD Gothic Neo','Malgun Gothic',sans-serif; margin:0; color:#1b1f2e; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     .pr-title { text-align:center; font-size:22px; font-weight:800; letter-spacing:-.01em; margin:0 0 3px; color:#1f2a52; }
-    .pr-sub { text-align:center; font-size:13px; font-weight:500; letter-spacing:.02em; margin:0 0 2px; color:#7a8496; }
+    .pr-sub { text-align:center; font-size:13px; font-weight:600; letter-spacing:.02em; margin:0 0 2px; color:#5f6a80; }
     .pr-rule { height:0; margin:0 0 13px; }
-    .pr-note { font-size:11.5px; color:#374151; margin:0; line-height:1.6; }
-    .pr-notes { margin:0 0 11px; padding:9px 13px; background:#f7f8fb; border-left:3px solid #c79a3c; border-radius:0 7px 7px 0; }
+    .pr-note { font-size:11.5px; font-weight:600; color:#2f3646; margin:0; line-height:1.6; }
+    .pr-notes { margin:0 0 11px; padding:9px 13px; background:#f4f6fb; border-left:3.5px solid #3b4a7a; border-radius:0 7px 7px 0; }
     .chan-wrap { max-width:150mm; margin:0 auto; }
     .chan-wrap table.pr { margin-bottom:9px; }
-    table.pr { border-collapse:collapse; width:100%; table-layout:fixed; border:1.2px solid #98a2c0; }
-    table.pr th, table.pr td { border:.7px solid #ccd1dc; padding:5px 4px; text-align:center; font-size:12px; color:#1b1f2e; word-break:keep-all; vertical-align:middle; line-height:1.45; }
-    table.pr thead th { background:#eef1f8; color:#1f2a52; font-weight:700; font-size:11.5px; letter-spacing:.03em; border-color:#ccd1dc; border-bottom:1.6px solid #98a2c0; padding:7px 4px; }
+    table.pr { border-collapse:collapse; width:100%; table-layout:fixed; border:2px solid #2b3660; }
+    table.pr th, table.pr td { border:1px solid #b6bdcf; padding:5px 4px; text-align:center; font-size:12px; font-weight:600; color:#111624; word-break:keep-all; vertical-align:middle; line-height:1.45; }
+    table.pr thead th { background:#3b4a7a; color:#fff; font-weight:800; font-size:11.5px; letter-spacing:.03em; border-color:#3b4a7a; border-bottom:1.8px solid #2b3660; padding:7px 4px; }
     table.pr tbody tr:nth-child(even) td { background:#fafbfd; }
-    table.pr td.nm { font-weight:700; font-size:13px; color:#1f2a52; }
+    table.pr td.nm { font-weight:800; font-size:13px; color:#1f2a52; }
     table.pr .dupname { font-weight:800; color:#1d4ed8; }
-    table.pr td.lb { background:#f6f8fc; font-weight:700; color:#2c3350; }
-    table.pr td.sum { background:#eef1f8; font-weight:700; color:#1f2a52; }
+    table.pr td.lb { background:#eef1f8; font-weight:800; color:#2b3660; }
+    table.pr td.sum { background:#e4e9f5; font-weight:800; color:#1f2a52; }
     table.pr td.mv { text-align:center; }
     .pr-split { display:flex; gap:13px; align-items:flex-start; }
     .pr-split > div { flex:1; }`;
@@ -1598,19 +1598,19 @@ async function exportImage(view){
   stage.style.cssText = `position:absolute; left:-99999px; top:0; background:#fff; color:#1b1f2e; padding:26px 24px; ${orient==='landscape'?'width:1400px':'width:920px'}; font-family:'Pretendard Variable',Pretendard,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;`;
   stage.innerHTML = `<style>
     .pr-title{text-align:center;font-size:33px;font-weight:800;letter-spacing:-.01em;margin:0 0 5px;color:#1f2a52}
-    .pr-sub{text-align:center;font-size:18px;font-weight:500;letter-spacing:.02em;margin:0 0 2px;color:#7a8496}
+    .pr-sub{text-align:center;font-size:18px;font-weight:600;letter-spacing:.02em;margin:0 0 2px;color:#5f6a80}
     .pr-rule{height:0;margin:0 0 20px}
-    table.pr{border-collapse:collapse;width:100%;table-layout:fixed;border:1.6px solid #98a2c0}
-    table.pr th,table.pr td{border:1px solid #ccd1dc;padding:10px 6px;text-align:center;font-size:17.5px;color:#1b1f2e;word-break:keep-all;vertical-align:middle;line-height:1.45}
-    table.pr thead th{background:#eef1f8;color:#1f2a52;font-weight:700;font-size:17px;letter-spacing:.03em;border-color:#ccd1dc;border-bottom:2px solid #98a2c0;padding:12px 6px}
+    table.pr{border-collapse:collapse;width:100%;table-layout:fixed;border:2.6px solid #2b3660}
+    table.pr th,table.pr td{border:1.3px solid #b6bdcf;padding:10px 6px;text-align:center;font-size:17.5px;font-weight:600;color:#111624;word-break:keep-all;vertical-align:middle;line-height:1.45}
+    table.pr thead th{background:#3b4a7a;color:#fff;font-weight:800;font-size:17px;letter-spacing:.03em;border-color:#3b4a7a;border-bottom:2.4px solid #2b3660;padding:12px 6px}
     table.pr tbody tr:nth-child(even) td{background:#fafbfd}
-    table.pr td.nm{font-weight:700;font-size:18.5px;color:#1f2a52}
+    table.pr td.nm{font-weight:800;font-size:18.5px;color:#1f2a52}
     table.pr .dupname{font-weight:800;color:#1d4ed8}
-    table.pr td.lb{background:#f6f8fc;font-weight:700;color:#2c3350}
-    table.pr td.sum{background:#eef1f8;font-weight:700;color:#1f2a52}
+    table.pr td.lb{background:#eef1f8;font-weight:800;color:#2b3660}
+    table.pr td.sum{background:#e4e9f5;font-weight:800;color:#1f2a52}
     table.pr td.mv{text-align:center}
-    .pr-note{font-size:15.5px;color:#374151;margin:0;line-height:1.65}
-    .pr-notes{margin:0 0 18px;padding:13px 18px;background:#f7f8fb;border-left:4px solid #c79a3c;border-radius:0 9px 9px 0}
+    .pr-note{font-size:15.5px;font-weight:600;color:#2f3646;margin:0;line-height:1.65}
+    .pr-notes{margin:0 0 18px;padding:13px 18px;background:#f4f6fb;border-left:5px solid #3b4a7a;border-radius:0 9px 9px 0}
     .chan-wrap{max-width:640px;margin:0 auto}
     .chan-wrap table.pr{margin-bottom:14px}
     .pr-split{display:flex;gap:18px;align-items:flex-start}
