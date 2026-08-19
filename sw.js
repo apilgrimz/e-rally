@@ -1,5 +1,5 @@
 /* 전도집회 서비스워커 — 오프라인 지원 (Stale-While-Revalidate) */
-const CACHE = 'evangelism-v15';
+const CACHE = 'evangelism-v16';
 const SHELL = [
   './',
   './index.html',

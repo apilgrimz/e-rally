@@ -390,7 +390,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.08.16-29';
+const APP_VERSION = '2026.08.16-30';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -1522,7 +1522,7 @@ function printCSS(orient){
     .chan-wrap table.pr { margin-bottom:9px; }
     table.pr { border-collapse:collapse; width:100%; table-layout:fixed; border:1.8px solid #8d97b4; }
     table.pr th, table.pr td { border:1px solid #b6bdcf; padding:5px 4px; text-align:center; font-size:12px; font-weight:600; color:#111624; word-break:keep-all; vertical-align:middle; line-height:1.45; }
-    table.pr thead th { background:#e8ecf5; color:#2b3660; font-weight:800; font-size:11.5px; letter-spacing:.03em; border-color:#b6bdcf; border-bottom:1.5px solid #98a2c0; padding:7px 4px; }
+    table.pr thead th { background:#dae0ef; color:#232d55; font-weight:800; font-size:11.5px; letter-spacing:.03em; border-color:#b6bdcf; border-bottom:1.6px solid #8d97b4; padding:7px 4px; }
     table.pr tbody tr:nth-child(even) td { background:#fafbfd; }
     table.pr td.nm { font-weight:800; font-size:13px; color:#1f2a52; }
     table.pr .dupname { font-weight:800; color:#1d4ed8; }
@@ -1602,7 +1602,7 @@ async function exportImage(view){
     .pr-rule{height:0;margin:0 0 20px}
     table.pr{border-collapse:collapse;width:100%;table-layout:fixed;border:2.2px solid #8d97b4}
     table.pr th,table.pr td{border:1.3px solid #b6bdcf;padding:10px 6px;text-align:center;font-size:17.5px;font-weight:600;color:#111624;word-break:keep-all;vertical-align:middle;line-height:1.45}
-    table.pr thead th{background:#e8ecf5;color:#2b3660;font-weight:800;font-size:17px;letter-spacing:.03em;border-color:#b6bdcf;border-bottom:2px solid #98a2c0;padding:12px 6px}
+    table.pr thead th{background:#dae0ef;color:#232d55;font-weight:800;font-size:17px;letter-spacing:.03em;border-color:#b6bdcf;border-bottom:2.2px solid #8d97b4;padding:12px 6px}
     table.pr tbody tr:nth-child(even) td{background:#fafbfd}
     table.pr td.nm{font-weight:800;font-size:18.5px;color:#1f2a52}
     table.pr .dupname{font-weight:800;color:#1d4ed8}
