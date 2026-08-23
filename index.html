@@ -255,14 +255,18 @@ table.cmap tbody tr:active td { background:var(--bg-2); }
 .sheet-backdrop { position:fixed; inset:0; z-index:100; background:rgba(0,0,0,.55); display:none; animation:fadein .2s; }
 .sheet-backdrop.show { display:block; }
 @keyframes fadein { from{opacity:0;} to{opacity:1;} }
-.sheet { position:fixed; left:0; right:0; bottom:0; z-index:101; background:var(--bg-0); border-radius:20px 20px 0 0; max-height:92vh; max-height:92dvh; display:flex; flex-direction:column; transform:translateY(100%); transition:transform .3s cubic-bezier(.32,.72,0,1); padding-bottom:var(--safe-bot); }
+.sheet { position:fixed; left:0; right:0; bottom:0; top:auto; z-index:101; background:var(--bg-0); border-radius:20px 20px 0 0; max-height:calc(100% - 24px); display:flex; flex-direction:column; transform:translateY(100%); transition:transform .3s cubic-bezier(.32,.72,0,1); padding-bottom:var(--safe-bot); box-sizing:border-box; }
 .sheet.show { transform:translateY(0); }
+@media (min-width:700px){
+  .sheet { left:50%; right:auto; width:min(700px,94%); transform:translate(-50%,100%); border-radius:20px 20px 0 0; }
+  .sheet.show { transform:translate(-50%,0); }
+}
 .sheet-handle { width:36px; height:4px; border-radius:2px; background:var(--line); margin:8px auto 4px; flex-shrink:0; }
 .sheet-head { padding:8px 16px 12px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--line-soft); flex-shrink:0; }
 .sheet-head h2 { margin:0; font-size:17px; font-weight:700; letter-spacing:-.02em; }
 .sheet-head button { color:var(--gold); font-weight:600; font-size:14px; padding:8px; }
 .sheet-head button.del { color:var(--rose); }
-.sheet-body { padding:16px; overflow-y:auto; flex:1; -webkit-overflow-scrolling:touch; }
+.sheet-body { padding:16px; overflow-y:auto; flex:1 1 auto; min-height:0; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
 .toast { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(100px + var(--safe-bot)); z-index:200; background:var(--bg-3); color:var(--ink); padding:11px 18px; border-radius:12px; font-size:13px; font-weight:500; border:1px solid var(--line); box-shadow:var(--shadow); opacity:0; pointer-events:none; transition:opacity .2s,transform .2s; max-width:88vw; text-align:center; }
 .toast.show { opacity:1; transform:translateX(-50%) translateY(-4px); pointer-events:auto; }
 .toast .tbtn { color:var(--gold); font-weight:700; margin-left:10px; padding:2px 4px; font-size:13px; }
@@ -390,7 +394,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.08.16-31';
+const APP_VERSION = '2026.08.16-32';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
