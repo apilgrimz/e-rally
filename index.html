@@ -394,7 +394,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.08.16-32';
+const APP_VERSION = '2026.08.16-33';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -1042,7 +1042,7 @@ function togglePrayAttend(id){
     const ck = cell.querySelector('.ck'); if(ck) ck.textContent = t.enrolled ? '✓' : '';
     // 헤더 카운트 갱신
     const vt = $('#view .view-head .vt small');
-    if(vt){ const total=DB.targets.length, en=DB.targets.filter(x=>x.enrolled).length; vt.textContent = `대상자 ${total}명 · 참석 ${en}명`; }
+    if(vt) vt.textContent = praySmallText();
   } else {
     rerenderPreserve();
   }
@@ -1148,8 +1148,8 @@ function openTargetSheet(target, isNew){
       const dup = DB.targets.find(x=> sameTarget(x, t));
       if(dup){
         if(fromStatus){
-          if(dup.enrolled){ toast('이미 전도현황에 등록된 대상자예요'); closeSheet(); return; }
-          dup.enrolled = true; dup.attend = {};
+          if(dup.enrolled && dup.inPray){ toast('이미 등록된 대상자예요'); closeSheet(); return; }
+          dup.enrolled = true; dup.attend = {}; dup.inPray = true;
           saveDB(); closeSheet(); rerenderPreserve();
           toast('이미 있는 대상자라 참석 등록했어요');
         }else{
@@ -1160,8 +1160,8 @@ function openTargetSheet(target, isNew){
         }
         return;
       }
-      // 신규: 전도현황에서 추가하면 기도명단에는 올리지 않음(참석자 전용)
-      t.inPray = !fromStatus;
+      // 신규: 기도명단에 항상 올리고, 전도현황에서 추가했으면 참석도 자동 체크
+      t.inPray = true;
       DB.targets.push(t);
     }
     saveDB(); closeSheet(); rerenderPreserve();
