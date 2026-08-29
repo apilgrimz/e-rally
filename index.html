@@ -394,7 +394,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.08.16-33';
+const APP_VERSION = '2026.08.16-34';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -452,6 +452,7 @@ function hydrateTarget(t){
   if(t.enrolled===undefined) t.enrolled = false;
   if(t.church===undefined) t.church = '';
   if(t.inPray===undefined) t.inPray = true;   // 값이 없으면 기도명단에 포함(기존 데이터 보존)
+  if(t.enrolled && !t.inPray) t.inPray = true; // 전도현황에 있으면 기도명단에도 포함
   return t;
 }
 function hydrateEvent(ev){
@@ -477,6 +478,7 @@ function loadDB(){
       const active = VAULT.events.find(e=>e.id===VAULT.activeId) || VAULT.events[0];
       VAULT.activeId = active.id;
       VAULT.events.forEach(hydrateEvent);
+      migrateEnrolledIntoPray();
       return active;
     }
   }catch(e){ console.warn('vault load error', e); }
@@ -484,6 +486,21 @@ function loadDB(){
   VAULT = { events:[fe], activeId:fe.id };
   saveVault();
   return fe;
+}
+/* 1회 정리: 전도현황에만 있던 대상자를 기도명단에도 합류시킴 (구버전 데이터 보정) */
+function migrateEnrolledIntoPray(){
+  try{
+    if(VAULT.prayMigrated) return;
+    let n = 0;
+    VAULT.events.forEach(ev=>{
+      (ev.targets||[]).forEach(t=>{
+        if(t.enrolled && !t.inPray){ t.inPray = true; n++; }
+      });
+    });
+    VAULT.prayMigrated = true;
+    saveVault();
+    if(n) setTimeout(()=>{ try{ toast(`기도명단에 ${n}명을 정리해 넣었어요`); }catch(e){} }, 1200);
+  }catch(e){ console.warn('pray migrate error', e); }
 }
 function saveVault(){
   try{ localStorage.setItem(VAULT_KEY, JSON.stringify(VAULT)); }catch(e){ console.warn('save error', e); }
