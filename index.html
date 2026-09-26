@@ -394,7 +394,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.08.16-34';
+const APP_VERSION = '2026.09.26-35';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -1700,21 +1700,42 @@ function switchEvent(id){
   syncAttachActive();
   setTab(currentTab);
 }
+/* 새 집회용: 계획의 구분(대분류·세부항목) 구조만 승계하고 내용은 비운다 */
+function blankPlanFrom(src){
+  const p = JSON.parse(JSON.stringify(src));
+  const n = (p.dayLabels && p.dayLabels.length) ? p.dayLabels.length : 6;
+  p.dayLabels = Array.from({length:n}, (_,i)=> (i+1)+'일');   // 날짜는 기간 입력 시 자동 생성
+  p.topNotes = [];                                            // 상단 안내문(날짜 등)은 비움
+  (p.rows||[]).forEach(r=>{
+    // cat(대분류) · label(세부항목) · mode 는 그대로 승계
+    r.value = '';
+    r.cells = (r.mode==='merged') ? [] : new Array(n).fill('');
+  });
+  return p;
+}
+/* 새 집회용: 배치도의 역할·분단·열 제목만 승계하고 담당자는 비운다 */
+function blankChanFrom(src){
+  const c = JSON.parse(JSON.stringify(src));
+  const nd = (c.divisions && c.divisions.length) ? c.divisions.length : 0;
+  (c.roles||[]).forEach(r=>{ r.cells = new Array(nd).fill(''); });
+  (c.fixed||[]).forEach(f=>{ f.value = ''; });
+  return c;   // notes(출발순서·장갑 착용 등 일반 요령)는 양식이므로 유지
+}
 function addEvent(){
   const body = `<div class="field"><label>집회 이름</label><input id="ev-name" placeholder="예) 3월 대전도집회" autofocus/></div>
     <div class="field"><label>교회 이름</label><input id="ev-church" value="${esc(DB.meta.churchName||'')}" placeholder="교회 이름"/></div>
-    <div class="muted">집회 계획(배치도 포함)은 직전 집회 내용을 그대로 가져오고, 기도명단·전도현황은 비어 있는 상태로 시작합니다.</div>`;
+    <div class="muted">집회 계획·배치도의 <b>구분(대분류·세부항목)</b>은 그대로 이어받고, 담당자·장소 등 <b>내용은 빈 양식</b>으로 시작합니다. 기도명단·전도현황도 비어 있습니다.</div>`;
   openSheet('새 집회 만들기', body, ()=>{
     const name = $('#ev-name').value.trim() || '전도집회';
     const fe = freshEvent(name); fe.meta.churchName = $('#ev-church').value.trim();
-    // 직전(현재) 집회의 계획·배치도를 그대로 이어받음 — 명단·출석은 비움
+    // 직전(현재) 집회의 항목 구조만 승계 — 내용·명단·출석은 비움
     try{
-      if(DB && DB.plan) fe.plan = JSON.parse(JSON.stringify(DB.plan));
-      if(DB && DB.chanmap) fe.chanmap = JSON.parse(JSON.stringify(DB.chanmap));
+      if(DB && DB.plan) fe.plan = blankPlanFrom(DB.plan);
+      if(DB && DB.chanmap) fe.chanmap = blankChanFrom(DB.chanmap);
     }catch(e){}
     VAULT.events.push(fe); DB = fe; VAULT.activeId = fe.id; saveVault();
     syncAttachActive();
-    closeSheet(); setTab('status'); toast('새 집회가 생성됐어요 (계획은 이전 집회에서 복사됨)');
+    closeSheet(); setTab('status'); toast('새 집회가 생성됐어요 (항목 구조만 승계, 내용은 빈 양식)');
   });
 }
 function openEventRename(){
