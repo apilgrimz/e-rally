@@ -394,7 +394,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.09.28-41';
+const APP_VERSION = '2026.09.28-42';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -1649,11 +1649,13 @@ function fitPlanStageWidth(stage){
 }
 /* 사진 화질: 큰 캔버스를 절반씩 고품질로 줄인다.
    너무 큰 이미지는 보는 앱이 거칠게 줄여 글자가 깨져 보이므로, 적정 크기로 미리 줄여 보낸다. */
-function downscaleCanvas(src, maxW){
+function downscaleCanvas(src, minW){
   try{
-    if(!src || !src.width || src.width <= maxW) return src;
+    if(!src || !src.width) return src;
     let cur = src;
-    while(cur.width > maxW*2){
+    // 정확히 '절반'으로만 줄인다 — 네 픽셀을 하나로 정확히 합치므로
+    // 어중간한 배율(예: 2.5배)로 줄일 때처럼 흐려지지 않고, 축소 표시 때 계단 현상도 없다.
+    while(Math.round(cur.width/2) >= minW){
       const half = document.createElement('canvas');
       half.width = Math.max(1, Math.round(cur.width/2));
       half.height = Math.max(1, Math.round(cur.height/2));
@@ -1662,13 +1664,7 @@ function downscaleCanvas(src, maxW){
       hx.drawImage(cur, 0, 0, half.width, half.height);
       cur = half;
     }
-    const out = document.createElement('canvas');
-    out.width = maxW;
-    out.height = Math.max(1, Math.round(cur.height * (maxW / cur.width)));
-    const ox = out.getContext('2d');
-    ox.imageSmoothingEnabled = true; ox.imageSmoothingQuality = 'high';
-    ox.drawImage(cur, 0, 0, out.width, out.height);
-    return out;
+    return cur;
   }catch(e){ return src; }
 }
 async function exportImage(view){
@@ -1706,7 +1702,7 @@ async function exportImage(view){
     // 글꼴이 준비된 뒤 캡처해야 글자가 정확히 그려진다
     try{ if(document.fonts && document.fonts.ready) await document.fonts.ready; }catch(e){}
     const raw = await html2canvas(stage, { scale:3, backgroundColor:'#ffffff', useCORS:true, logging:false });
-    const canvas = downscaleCanvas(raw, 2400);   // 고품질로 줄여 축소 표시 때 글자가 깨지지 않게
+    const canvas = downscaleCanvas(raw, 2400);   // 절반 배율로만 줄여 확대는 선명, 축소는 매끄럽게
     const fname = ({status:'전도현황', pray:'기도명단', plan:'집회계획', chan:'성찬위원배치도'}[view]) + '.png';
     canvas.toBlob(async (blob)=>{
       if(stage.parentNode) document.body.removeChild(stage);
