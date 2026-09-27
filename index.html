@@ -394,7 +394,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.09.27-39';
+const APP_VERSION = '2026.09.27-40';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -877,7 +877,7 @@ function buildPlanGrid(forPrint){
   let cols = '';
   if(forPrint){
     // 구분(대분류·세부항목) 칸은 폭을 고정하지 않아 화면처럼 내용 폭대로 그려지게 한다
-    const dw = (72/nd).toFixed(2);
+    const dw = (100/nd).toFixed(2);   // 남는 폭은 날짜 칸이 나눠 가짐
     cols = `<colgroup><col><col>` + p.dayLabels.map(()=>`<col style="width:${dw}%">`).join('') + `</colgroup>`;
   }
   let head = `<thead><tr><th colspan="2">구분</th>`;
@@ -1664,7 +1664,7 @@ async function exportImage(view){
     table.pr td.nm{font-weight:800;font-size:18.5px;color:#1f2a52}
     table.pr .dupname{font-weight:800;color:#1d4ed8}
     table.pr.planpr{table-layout:auto;width:auto;min-width:100%}
-    table.pr.planpr td.pc-cat,table.pr.planpr td.pc-lbl{white-space:nowrap;word-break:keep-all}
+    table.pr.planpr td.pc-cat,table.pr.planpr td.pc-lbl{white-space:nowrap;word-break:keep-all;width:1px;padding-left:13px;padding-right:13px}
     table.pr td.lb{background:#f4f6fb;font-weight:800;color:#2b3660}
     table.pr td.sum{background:#f0f3fa;font-weight:800;color:#1f2a52}
     table.pr td.mv{text-align:center}
