@@ -203,7 +203,7 @@ html.fs-xl body { zoom:1.27; }
 .plan-head .pt { font-size:18px; font-weight:800; letter-spacing:-.02em; }
 .plan-head .ps { font-size:13px; color:var(--ink-soft); margin-top:2px; }
 .plan-notes { margin:8px 0 12px; display:flex; flex-direction:column; gap:5px; }
-.plan-notes .pn { font-size:12.5px; color:var(--ink-soft); background:var(--bg-1); border:1px solid var(--line-soft); border-radius:9px; padding:7px 10px; white-space:pre-wrap; }
+.plan-notes .pn { font-size:13.5px; color:var(--ink-soft); background:var(--bg-1); border:1px solid var(--line-soft); border-radius:9px; padding:7px 10px; white-space:pre-wrap; }
 .ptbl-scroll { overflow-x:auto; margin:0 -14px; padding:0 14px 8px; -webkit-overflow-scrolling:touch; }
 .ptbl-scroll::-webkit-scrollbar { height:7px; } .ptbl-scroll::-webkit-scrollbar-thumb { background:var(--line); border-radius:3px; }
 table.ptbl { border-collapse:collapse; width:max-content; min-width:100%; font-size:12px; border:2px solid var(--line); }
@@ -394,7 +394,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.09.27-36';
+const APP_VERSION = '2026.09.27-38';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -892,10 +892,11 @@ function buildPlanGrid(forPrint){
     }else{
       body += `<td class="${T.lbl2}" colspan="2">${escBr(r.label)}</td>`;
     }
+    const wrapCell = v => forPrint ? `<span class="cw">${v}</span>` : v;   // 사진에서 줄 수 측정용
     if(r.mode==='merged'){
-      body += `<td class="${T.mv}" colspan="${nd}">${planCell(r.value)}</td>`;
+      body += `<td class="${T.mv}" colspan="${nd}">${wrapCell(planCell(r.value))}</td>`;
     }else{
-      for(let di=0; di<nd; di++) body += `<td class="${T.cell}">${planCell((r.cells||[])[di]||'')}</td>`;
+      for(let di=0; di<nd; di++) body += `<td class="${T.cell}">${wrapCell(planCell((r.cells||[])[di]||''))}</td>`;
     }
     body += `</tr>`;
   });
@@ -1538,7 +1539,7 @@ function printCSS(orient){
     .pr-title { text-align:center; font-size:22px; font-weight:800; letter-spacing:-.01em; margin:0 0 3px; color:#1f2a52; }
     .pr-sub { text-align:center; font-size:13px; font-weight:600; letter-spacing:.02em; margin:0 0 2px; color:#5f6a80; }
     .pr-rule { height:0; margin:0 0 13px; }
-    .pr-note { font-size:11.5px; font-weight:600; color:#2f3646; margin:0; line-height:1.6; }
+    .pr-note { font-size:12.5px; font-weight:600; color:#2f3646; margin:0; line-height:1.6; }
     .pr-notes { margin:0 0 11px; padding:9px 13px; background:#f4f6fb; border-left:3.5px solid #98a2c0; border-radius:0 7px 7px 0; }
     .chan-wrap { max-width:150mm; margin:0 auto; }
     .chan-wrap table.pr { margin-bottom:9px; }
@@ -1573,7 +1574,7 @@ function doPrint(view){
     table.pr th, table.pr td{font-size:10.5px;padding:3px 3px;line-height:1.28}
     table.pr thead th{font-size:10px;padding:4px 3px}
     table.pr td.nm{font-size:11px}
-    .pr-note{font-size:9.5px;margin:0 0 2px}
+    .pr-note{font-size:10.5px;margin:0 0 2px}
     .pr-notes{margin:0 0 6px}` : '';
   const printableH = (orient==='landscape'?210:297) - marginMM*2 - 1;
   const fillCSS = fillPage ? `
@@ -1614,6 +1615,26 @@ function doPrint(view){
 }
 
 /* 사진(PNG) 출력 — 오프스크린 라이트 테이블 + html2canvas */
+/* 집회계획 사진: 날짜·공통 칸의 줄 수를 재어 2줄(길면 3줄)에 맞는 최소 폭을 고른다.
+   인쇄가 A4 가로인 것처럼 사진도 가로로 넓힐 수 있어, 긴 주소가 4줄까지 내려가지 않는다. */
+function fitPlanStageWidth(stage){
+  const tbl = stage.querySelector('table.planpr');
+  if(!tbl) return;
+  const spans = Array.from(tbl.querySelectorAll('span.cw'));
+  if(!spans.length) return;
+  // // 로 직접 넣은 줄 수는 그대로 존중하고, 그 이상 접히는 것만 줄인다
+  const wanted = spans.map(sp=> Math.max(1, sp.innerHTML.split(/<br\s*\/?>/i).length));
+  const linesOf = sp => (sp.getClientRects().length || 1);
+  const fits = limit => spans.every((sp,i)=> linesOf(sp) <= Math.max(wanted[i], limit));
+  const cands = [1400, 1700, 1950, 2200, 2450, 2700];
+  for(const limit of [2, 3]){
+    for(const w of cands){
+      stage.style.width = w + 'px';
+      if(fits(limit)){ return; }
+    }
+  }
+  stage.style.width = cands[cands.length-1] + 'px';   // 그래도 길면 최대 폭
+}
 async function exportImage(view){
   if(typeof html2canvas==='undefined'){ toast('이미지 모듈 로딩 중입니다. 잠시 후 다시 시도하세요'); return; }
   toast('이미지 만드는 중…');
@@ -1630,12 +1651,12 @@ async function exportImage(view){
     table.pr tbody tr:nth-child(even) td{background:#fafbfd}
     table.pr td.nm{font-weight:800;font-size:18.5px;color:#1f2a52}
     table.pr .dupname{font-weight:800;color:#1d4ed8}
-    table.pr.planpr{table-layout:auto;width:auto;min-width:100%;max-width:2600px}
+    table.pr.planpr{table-layout:auto;width:auto;min-width:100%}
     table.pr.planpr td.pc-cat,table.pr.planpr td.pc-lbl{white-space:nowrap;word-break:keep-all}
     table.pr td.lb{background:#f4f6fb;font-weight:800;color:#2b3660}
     table.pr td.sum{background:#f0f3fa;font-weight:800;color:#1f2a52}
     table.pr td.mv{text-align:center}
-    .pr-note{font-size:15.5px;font-weight:600;color:#2f3646;margin:0;line-height:1.65}
+    .pr-note{font-size:17px;font-weight:600;color:#2f3646;margin:0;line-height:1.65}
     .pr-notes{margin:0 0 18px;padding:13px 18px;background:#f4f6fb;border-left:5px solid #98a2c0;border-radius:0 9px 9px 0}
     .chan-wrap{max-width:640px;margin:0 auto}
     .chan-wrap table.pr{margin-bottom:14px}
@@ -1643,15 +1664,8 @@ async function exportImage(view){
     .pr-split>div{flex:1}
   </style>` + buildPrint(view);
   document.body.appendChild(stage);
-  // 집회계획: 표가 내용 폭대로 그려지므로(화면과 동일) 무대 폭을 표에 맞춰 넓혀 잘리지 않게 한다
-  try{
-    const wide = stage.querySelector('table.planpr');
-    if(wide){
-      const need = Math.ceil(wide.scrollWidth) + 48;   // 좌우 여백 24px씩
-      const cur = parseFloat(getComputedStyle(stage).width) || 0;
-      if(need > cur) stage.style.width = Math.min(need, 2700) + 'px';
-    }
-  }catch(e){}
+  // 집회계획: 긴 주소도 2줄(아주 길면 3줄)에 들어가는 최소 폭으로 자동 조정
+  try{ fitPlanStageWidth(stage); }catch(e){}
   try{
     const canvas = await html2canvas(stage, { scale:3, backgroundColor:'#ffffff', useCORS:true, logging:false });
     const fname = ({status:'전도현황', pray:'기도명단', plan:'집회계획', chan:'성찬위원배치도'}[view]) + '.png';
