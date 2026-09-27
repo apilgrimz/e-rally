@@ -394,7 +394,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.09.27-38';
+const APP_VERSION = '2026.09.27-39';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -1626,14 +1626,26 @@ function fitPlanStageWidth(stage){
   const wanted = spans.map(sp=> Math.max(1, sp.innerHTML.split(/<br\s*\/?>/i).length));
   const linesOf = sp => (sp.getClientRects().length || 1);
   const fits = limit => spans.every((sp,i)=> linesOf(sp) <= Math.max(wanted[i], limit));
-  const cands = [1400, 1700, 1950, 2200, 2450, 2700];
+  const cands = [1400, 1600, 1800, 2000, 2200];
+  const A4_RATIO = 297/210;              // A4 가로 = 약 1.414 : 1
+  const RATIO_MAX = A4_RATIO * 1.06;     // 조금의 여유만 허용
+  const setW = w => { stage.style.width = w + 'px'; };
+  const ratioNow = ()=>{
+    const w = parseFloat(getComputedStyle(stage).width) || 0;
+    const h = stage.scrollHeight || 1;
+    return w / h;
+  };
+  // 1) 긴 주소가 2줄(아주 길면 3줄)에 들어가는 최소 폭
+  let needW = cands[cands.length-1], found = false;
   for(const limit of [2, 3]){
-    for(const w of cands){
-      stage.style.width = w + 'px';
-      if(fits(limit)){ return; }
-    }
+    for(const w of cands){ setW(w); if(fits(limit)){ needW = w; found = true; break; } }
+    if(found) break;
   }
-  stage.style.width = cands[cands.length-1] + 'px';   // 그래도 길면 최대 폭
+  // 2) A4 가로 비율을 크게 넘지 않는 가장 넓은 폭
+  let ratioW = cands[0];
+  for(const w of cands){ setW(w); if(ratioNow() <= RATIO_MAX) ratioW = w; }
+  // 3) 둘 중 좁은 쪽 — 줄 수도 줄이고 가로도 길어지지 않게
+  setW(Math.max(cands[0], Math.min(needW, ratioW)));
 }
 async function exportImage(view){
   if(typeof html2canvas==='undefined'){ toast('이미지 모듈 로딩 중입니다. 잠시 후 다시 시도하세요'); return; }
