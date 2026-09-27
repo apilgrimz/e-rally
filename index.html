@@ -394,7 +394,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.09.27-40';
+const APP_VERSION = '2026.09.28-41';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -1550,7 +1550,7 @@ function printCSS(orient){
     table.pr td.nm { font-weight:800; font-size:13px; color:#1f2a52; }
     table.pr .dupname { font-weight:800; color:#1d4ed8; }
     table.pr.planpr { table-layout:auto; }
-    table.pr.planpr td.pc-cat, table.pr.planpr td.pc-lbl { word-break:keep-all; }
+    table.pr.planpr td.pc-cat, table.pr.planpr td.pc-lbl { white-space:nowrap; word-break:keep-all; width:1px; padding-left:8px; padding-right:8px; }
     table.pr td.lb { background:#f4f6fb; font-weight:800; color:#2b3660; }
     table.pr td.sum { background:#f0f3fa; font-weight:800; color:#1f2a52; }
     table.pr td.mv { text-align:center; }
@@ -1647,6 +1647,30 @@ function fitPlanStageWidth(stage){
   // 3) 둘 중 좁은 쪽 — 줄 수도 줄이고 가로도 길어지지 않게
   setW(Math.max(cands[0], Math.min(needW, ratioW)));
 }
+/* 사진 화질: 큰 캔버스를 절반씩 고품질로 줄인다.
+   너무 큰 이미지는 보는 앱이 거칠게 줄여 글자가 깨져 보이므로, 적정 크기로 미리 줄여 보낸다. */
+function downscaleCanvas(src, maxW){
+  try{
+    if(!src || !src.width || src.width <= maxW) return src;
+    let cur = src;
+    while(cur.width > maxW*2){
+      const half = document.createElement('canvas');
+      half.width = Math.max(1, Math.round(cur.width/2));
+      half.height = Math.max(1, Math.round(cur.height/2));
+      const hx = half.getContext('2d');
+      hx.imageSmoothingEnabled = true; hx.imageSmoothingQuality = 'high';
+      hx.drawImage(cur, 0, 0, half.width, half.height);
+      cur = half;
+    }
+    const out = document.createElement('canvas');
+    out.width = maxW;
+    out.height = Math.max(1, Math.round(cur.height * (maxW / cur.width)));
+    const ox = out.getContext('2d');
+    ox.imageSmoothingEnabled = true; ox.imageSmoothingQuality = 'high';
+    ox.drawImage(cur, 0, 0, out.width, out.height);
+    return out;
+  }catch(e){ return src; }
+}
 async function exportImage(view){
   if(typeof html2canvas==='undefined'){ toast('이미지 모듈 로딩 중입니다. 잠시 후 다시 시도하세요'); return; }
   toast('이미지 만드는 중…');
@@ -1679,7 +1703,10 @@ async function exportImage(view){
   // 집회계획: 긴 주소도 2줄(아주 길면 3줄)에 들어가는 최소 폭으로 자동 조정
   try{ fitPlanStageWidth(stage); }catch(e){}
   try{
-    const canvas = await html2canvas(stage, { scale:3, backgroundColor:'#ffffff', useCORS:true, logging:false });
+    // 글꼴이 준비된 뒤 캡처해야 글자가 정확히 그려진다
+    try{ if(document.fonts && document.fonts.ready) await document.fonts.ready; }catch(e){}
+    const raw = await html2canvas(stage, { scale:3, backgroundColor:'#ffffff', useCORS:true, logging:false });
+    const canvas = downscaleCanvas(raw, 2400);   // 고품질로 줄여 축소 표시 때 글자가 깨지지 않게
     const fname = ({status:'전도현황', pray:'기도명단', plan:'집회계획', chan:'성찬위원배치도'}[view]) + '.png';
     canvas.toBlob(async (blob)=>{
       if(stage.parentNode) document.body.removeChild(stage);
