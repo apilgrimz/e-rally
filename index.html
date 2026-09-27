@@ -394,7 +394,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.09.28-42';
+const APP_VERSION = '2026.09.28-43';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -1649,12 +1649,31 @@ function fitPlanStageWidth(stage){
 }
 /* 사진 화질: 큰 캔버스를 절반씩 고품질로 줄인다.
    너무 큰 이미지는 보는 앱이 거칠게 줄여 글자가 깨져 보이므로, 적정 크기로 미리 줄여 보낸다. */
+/* 사진 화질 (기기별 저장) — 1:보통 2:높게(기본) 3:최대 */
+function getPhotoQ(){ try{ return localStorage.getItem('ev-photoq')||'2'; }catch(e){ return '2'; } }
+function photoQSpec(){
+  const v = getPhotoQ();
+  if(v==='1') return { scale:3, floor:2400 };   // 절반으로 한 번 줄임 (가볍고 매끄러움)
+  if(v==='3') return { scale:4, floor:0 };      // 줄이지 않음 (가장 선명, 용량 큼)
+  return { scale:3, floor:0 };                  // 기본: 줄이지 않음
+}
+function renderPqPills(){
+  const box = $('#pq-pills'); if(!box) return;
+  const cur = getPhotoQ();
+  const opts = [['1','보통'],['2','높게'],['3','최대']];
+  box.innerHTML = opts.map(([v,l])=> `<button class="zone-pill ${cur===v?'active':''}" data-pq="${v}">${l}</button>`).join('');
+  $$('#pq-pills [data-pq]').forEach(b=> b.onclick = ()=>{
+    try{ localStorage.setItem('ev-photoq', b.dataset.pq); }catch(e){}
+    renderPqPills();
+  });
+}
 function downscaleCanvas(src, minW){
   try{
     if(!src || !src.width) return src;
     let cur = src;
     // 정확히 '절반'으로만 줄인다 — 네 픽셀을 하나로 정확히 합치므로
     // 어중간한 배율(예: 2.5배)로 줄일 때처럼 흐려지지 않고, 축소 표시 때 계단 현상도 없다.
+    if(!minW) return cur;   // 줄이지 않음
     while(Math.round(cur.width/2) >= minW){
       const half = document.createElement('canvas');
       half.width = Math.max(1, Math.round(cur.width/2));
@@ -1672,16 +1691,16 @@ async function exportImage(view){
   toast('이미지 만드는 중…');
   const orient = (view==='pray'||view==='chan') ? 'portrait' : 'landscape';
   const stage = document.createElement('div');
-  stage.style.cssText = `position:absolute; left:-99999px; top:0; background:#fff; color:#1b1f2e; padding:26px 24px; ${orient==='landscape'?'width:1400px':'width:920px'}; font-family:'Pretendard Variable',Pretendard,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;`;
+  stage.style.cssText = `position:absolute; left:-99999px; top:0; background:#fff; color:#1b1f2e; padding:26px 24px; ${orient==='landscape'?'width:1400px':'width:920px'}; font-family:'Pretendard Variable',Pretendard,'Apple SD Gothic Neo','Malgun Gothic',sans-serif; zoom:1; -webkit-text-size-adjust:100%; text-size-adjust:100%;`;
   stage.innerHTML = `<style>
     .pr-title{text-align:center;font-size:33px;font-weight:800;letter-spacing:-.01em;margin:0 0 5px;color:#1f2a52}
     .pr-sub{text-align:center;font-size:18px;font-weight:600;letter-spacing:.02em;margin:0 0 2px;color:#5f6a80}
     .pr-rule{height:0;margin:0 0 20px}
-    table.pr{border-collapse:collapse;width:100%;table-layout:fixed;border:2.2px solid #8d97b4}
-    table.pr th,table.pr td{border:1.3px solid #b6bdcf;padding:10px 6px;text-align:center;font-size:17.5px;font-weight:600;color:#111624;word-break:keep-all;vertical-align:middle;line-height:1.45}
-    table.pr thead th{background:#dae0ef;color:#232d55;font-weight:800;font-size:17px;letter-spacing:.03em;border-color:#b6bdcf;border-bottom:2.2px solid #8d97b4;padding:12px 6px}
+    table.pr{border-collapse:collapse;width:100%;table-layout:fixed;border:3px solid #8d97b4}
+    table.pr th,table.pr td{border:1px solid #b6bdcf;padding:10px 6px;text-align:center;font-size:18px;font-weight:600;color:#111624;word-break:keep-all;vertical-align:middle;line-height:1.5}
+    table.pr thead th{background:#dae0ef;color:#232d55;font-weight:800;font-size:17px;letter-spacing:.03em;border-color:#b6bdcf;border-bottom:2px solid #8d97b4;padding:12px 6px}
     table.pr tbody tr:nth-child(even) td{background:#fafbfd}
-    table.pr td.nm{font-weight:800;font-size:18.5px;color:#1f2a52}
+    table.pr td.nm{font-weight:800;font-size:19px;color:#1f2a52}
     table.pr .dupname{font-weight:800;color:#1d4ed8}
     table.pr.planpr{table-layout:auto;width:auto;min-width:100%}
     table.pr.planpr td.pc-cat,table.pr.planpr td.pc-lbl{white-space:nowrap;word-break:keep-all;width:1px;padding-left:13px;padding-right:13px}
@@ -1701,8 +1720,14 @@ async function exportImage(view){
   try{
     // 글꼴이 준비된 뒤 캡처해야 글자가 정확히 그려진다
     try{ if(document.fonts && document.fonts.ready) await document.fonts.ready; }catch(e){}
-    const raw = await html2canvas(stage, { scale:3, backgroundColor:'#ffffff', useCORS:true, logging:false });
-    const canvas = downscaleCanvas(raw, 2400);   // 절반 배율로만 줄여 확대는 선명, 축소는 매끄럽게
+    const q = photoQSpec();
+    let raw;
+    try{
+      raw = await html2canvas(stage, { scale:q.scale, backgroundColor:'#ffffff', useCORS:true, logging:false });
+    }catch(err){   // 해상도가 너무 커서 실패하면 한 단계 낮춰 다시
+      raw = await html2canvas(stage, { scale:2, backgroundColor:'#ffffff', useCORS:true, logging:false });
+    }
+    const canvas = downscaleCanvas(raw, q.floor);   // 줄일 때는 절반 배율만 사용(흐려지지 않음)
     const fname = ({status:'전도현황', pray:'기도명단', plan:'집회계획', chan:'성찬위원배치도'}[view]) + '.png';
     canvas.toBlob(async (blob)=>{
       if(stage.parentNode) document.body.removeChild(stage);
@@ -1837,6 +1862,8 @@ function openSettingsSheet(){
       <div id="sync-box"></div>
       <div class="section-title">화면 글자 크기</div>
       <div class="fs-pills" id="fs-pills"></div>
+      <div class="section-title">사진 화질</div>
+      <div class="fs-pills" id="pq-pills"></div>
       <div class="section-title">내보내기</div>
       <div class="list-row"><div class="lr-main"><div class="t">엑셀(CSV) 내보내기</div><div class="d">명단·출석을 엑셀 파일로 저장</div></div><button class="btn btn-secondary btn-sm" id="s-csv">저장</button></div>
       <div class="section-title">앱 공유하기</div>
@@ -1844,7 +1871,7 @@ function openSettingsSheet(){
       <div class="section-title">앱 정보</div>
       <div class="list-row"><div class="lr-main"><div class="t">버전</div><div class="d">${esc(APP_VERSION)}</div></div></div>`;
     openSheet('설정', body, null);
-    renderSyncBox(); renderFsPills();
+    renderSyncBox(); renderFsPills(); renderPqPills();
     $('#s-csv').onclick = exportCSV;
     $('#s-shareapp').onclick = shareApp;
     return;
@@ -1877,6 +1904,10 @@ function openSettingsSheet(){
     <div class="section-title">화면 글자 크기</div>
     <div class="fs-pills" id="fs-pills"></div>
 
+    <div class="section-title">사진 화질</div>
+    <div class="fs-pills" id="pq-pills"></div>
+    <div class="muted" style="margin-top:6px">확대해도 선명하려면 <b>최대</b>, 용량이 부담되면 <b>보통</b>을 고르세요.</div>
+
     <div class="section-title">앱 공유하기</div>
     <div class="list-row"><div class="lr-main"><div class="t">빈 앱 공유</div><div class="d">데이터 없이 앱만 다른 사람에게 공유</div></div><button class="btn btn-secondary btn-sm" id="s-shareapp">공유</button></div>
 
@@ -1899,7 +1930,7 @@ function openSettingsSheet(){
     }
     saveDB(); closeSheet(); render(); toast('설정이 저장됐어요'+dateMsg);
   });
-  renderZoneTags(); renderDayList(); renderSyncBox(); renderFsPills();
+  renderZoneTags(); renderDayList(); renderSyncBox(); renderFsPills(); renderPqPills();
   $('#zone-add').onclick = ()=>{ const v=$('#zone-new').value.trim(); if(v && !DB.settings.zones.includes(v)){ DB.settings.zones.push(v); DB.settings.zones.sort(zoneCmp); saveDB(); } $('#zone-new').value=''; renderZoneTags(); };
   $('#day-add').onclick = ()=>{ const v=$('#day-new').value.trim(); if(v){ DB.settings.days.push({label:v}); saveDB(); } $('#day-new').value=''; renderDayList(); };
   $('#s-export').onclick = exportJSON;
