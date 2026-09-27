@@ -394,7 +394,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.09.26-35';
+const APP_VERSION = '2026.09.27-36';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -872,12 +872,13 @@ function buildPlanGrid(forPrint){
   if(!rows.length) return '';
   const nd = p.dayLabels.length;
   const catSpans = computeSpans(rows, r=> r.cat||'');
-  const T = forPrint ? { tbl:'pr', cat:'lb', lbl:'lb', lbl2:'lb', cell:'', mv:'mv' }
+  const T = forPrint ? { tbl:'pr planpr', cat:'lb pc-cat', lbl:'lb pc-lbl', lbl2:'lb pc-lbl', cell:'', mv:'mv' }
                      : { tbl:'ptbl', cat:'cat', lbl:'lbl', lbl2:'lbl2', cell:'cell', mv:'mval' };
   let cols = '';
   if(forPrint){
-    const dw = (78/nd).toFixed(2);
-    cols = `<colgroup><col style="width:8%"><col style="width:14%">` + p.dayLabels.map(()=>`<col style="width:${dw}%">`).join('') + `</colgroup>`;
+    // 구분(대분류·세부항목) 칸은 폭을 고정하지 않아 화면처럼 내용 폭대로 그려지게 한다
+    const dw = (72/nd).toFixed(2);
+    cols = `<colgroup><col><col>` + p.dayLabels.map(()=>`<col style="width:${dw}%">`).join('') + `</colgroup>`;
   }
   let head = `<thead><tr><th colspan="2">구분</th>`;
   p.dayLabels.forEach(d=> head += `<th>${esc(d)}</th>`);
@@ -1547,6 +1548,8 @@ function printCSS(orient){
     table.pr tbody tr:nth-child(even) td { background:#fafbfd; }
     table.pr td.nm { font-weight:800; font-size:13px; color:#1f2a52; }
     table.pr .dupname { font-weight:800; color:#1d4ed8; }
+    table.pr.planpr { table-layout:auto; }
+    table.pr.planpr td.pc-cat, table.pr.planpr td.pc-lbl { word-break:keep-all; }
     table.pr td.lb { background:#f4f6fb; font-weight:800; color:#2b3660; }
     table.pr td.sum { background:#f0f3fa; font-weight:800; color:#1f2a52; }
     table.pr td.mv { text-align:center; }
@@ -1627,6 +1630,8 @@ async function exportImage(view){
     table.pr tbody tr:nth-child(even) td{background:#fafbfd}
     table.pr td.nm{font-weight:800;font-size:18.5px;color:#1f2a52}
     table.pr .dupname{font-weight:800;color:#1d4ed8}
+    table.pr.planpr{table-layout:auto;width:auto;min-width:100%;max-width:2600px}
+    table.pr.planpr td.pc-cat,table.pr.planpr td.pc-lbl{white-space:nowrap;word-break:keep-all}
     table.pr td.lb{background:#f4f6fb;font-weight:800;color:#2b3660}
     table.pr td.sum{background:#f0f3fa;font-weight:800;color:#1f2a52}
     table.pr td.mv{text-align:center}
@@ -1638,6 +1643,15 @@ async function exportImage(view){
     .pr-split>div{flex:1}
   </style>` + buildPrint(view);
   document.body.appendChild(stage);
+  // 집회계획: 표가 내용 폭대로 그려지므로(화면과 동일) 무대 폭을 표에 맞춰 넓혀 잘리지 않게 한다
+  try{
+    const wide = stage.querySelector('table.planpr');
+    if(wide){
+      const need = Math.ceil(wide.scrollWidth) + 48;   // 좌우 여백 24px씩
+      const cur = parseFloat(getComputedStyle(stage).width) || 0;
+      if(need > cur) stage.style.width = Math.min(need, 2700) + 'px';
+    }
+  }catch(e){}
   try{
     const canvas = await html2canvas(stage, { scale:3, backgroundColor:'#ffffff', useCORS:true, logging:false });
     const fname = ({status:'전도현황', pray:'기도명단', plan:'집회계획', chan:'성찬위원배치도'}[view]) + '.png';
