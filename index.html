@@ -394,7 +394,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.09.28-43';
+const APP_VERSION = '2026.10.03-44';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -457,6 +457,7 @@ function hydrateTarget(t){
 }
 function hydrateEvent(ev){
   ev.meta = ev.meta || {}; ev.settings = ev.settings || {};
+  if(ev.meta.planSkipEnd===undefined) ev.meta.planSkipEnd = 0;
   if(!Array.isArray(ev.settings.zones) || !ev.settings.zones.length) ev.settings.zones = DEFAULT_ZONES.slice();
   ev.settings.zones.sort(zoneCmp);
   if(!Array.isArray(ev.settings.days) || !ev.settings.days.length) ev.settings.days = defaultDays();
@@ -612,8 +613,11 @@ function genDayLabels(period){
   return out.length ? out : null;
 }
 function applyPeriodToPlan(){
-  const labels = genDayLabels(DB.meta.period);
+  let labels = genDayLabels(DB.meta.period);
   if(!labels) return false;
+  // 집회계획은 기간 끝에서 N일을 뺄 수 있다 (예: 기간은 주일까지, 계획은 토요일까지)
+  const skip = Math.max(0, Math.min(2, parseInt(DB.meta.planSkipEnd||0, 10) || 0));
+  if(skip > 0 && labels.length > skip) labels = labels.slice(0, labels.length - skip);
   DB.plan.dayLabels = labels;
   (DB.plan.rows||[]).forEach(r=>{
     if(r.mode==='merged') return;
@@ -1884,6 +1888,13 @@ function openSettingsSheet(){
       <div class="field"><label>기간</label><input id="s-period" value="${esc(m.period)}" placeholder="2026.1.12~18"/></div>
       <div class="field"><label>강사</label><input id="s-pastor" value="${esc(m.pastor)}" placeholder="강사명"/></div>
     </div>
+    <div class="field"><label>집회계획 일자</label>
+      <select id="s-planskip">
+        <option value="0" ${String(m.planSkipEnd||0)==='0'?'selected':''}>기간 전체</option>
+        <option value="1" ${String(m.planSkipEnd||0)==='1'?'selected':''}>마지막 1일 제외 (예: 토요일까지)</option>
+        <option value="2" ${String(m.planSkipEnd||0)==='2'?'selected':''}>마지막 2일 제외</option>
+      </select>
+      <div class="muted" style="margin-top:6px">기간은 그대로 두고 집회계획 표의 날짜만 줄입니다. 전도현황 일자는 영향받지 않습니다.</div></div>
 
     <div class="section-title">구역 관리</div>
     <div class="tag-wrap" id="zone-tags"></div>
@@ -1918,14 +1929,17 @@ function openSettingsSheet(){
     <div class="muted" id="install-note">홈 화면에 설치하면 앱처럼 사용할 수 있어요. (브라우저 메뉴 → "홈 화면에 추가")</div>
   `;
   const prevPeriod = m.period || '';
+  const prevSkip = String(m.planSkipEnd||0);
   openSheet('설정', body, ()=>{
     DB.meta.churchName = $('#s-church').value.trim();
     DB.meta.title = $('#s-title').value.trim() || '전도집회';
     DB.meta.period = $('#s-period').value.trim();
     DB.meta.pastor = $('#s-pastor').value.trim();
-    // 기간이 바뀌면 집회계획 표의 날짜/요일을 자동 반영
+    const skSel = $('#s-planskip');
+    if(skSel) DB.meta.planSkipEnd = parseInt(skSel.value,10) || 0;
+    // 기간이나 '집회계획 일자'가 바뀌면 계획 표의 날짜/요일을 자동 반영
     let dateMsg = '';
-    if(DB.meta.period !== prevPeriod){
+    if(DB.meta.period !== prevPeriod || String(DB.meta.planSkipEnd||0) !== prevSkip){
       if(applyPeriodToPlan()) dateMsg = ' · 집회계획 날짜 반영됨';
     }
     saveDB(); closeSheet(); render(); toast('설정이 저장됐어요'+dateMsg);
