@@ -394,7 +394,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.10.10-45';
+const APP_VERSION = '2026.10.10-46';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -807,6 +807,7 @@ function renderPray(){
    <div class="view-head">
      <div class="vt">기도 명단<small id="vtSmall">${praySmallText()}</small></div>
      <div class="view-actions">
+       ${DB.viewerOnly?'':'<button class="btn btn-secondary btn-sm" data-act="paste-pray">📋 붙여넣기</button>'}
        <button class="btn btn-secondary btn-sm" data-act="photo-pray">📷 사진</button>
        <button class="btn btn-secondary btn-sm" data-act="print-pray">🖨 인쇄</button>
      </div>
@@ -990,6 +991,7 @@ function handleAct(a){
   else if(a==='print-status') doPrint('status');
   else if(a==='photo-pray') exportImage('pray');
   else if(a==='print-pray') doPrint('pray');
+  else if(a==='paste-pray') openImportSheet();
   else if(a==='photo-plan') exportImage('plan');
   else if(a==='print-plan') doPrint('plan');
   else if(a==='edit-plan') openPlanSheet();
@@ -1145,12 +1147,27 @@ function parseRosterText(text){
   String(text||'').split(/\r?\n/).forEach(line=>{
     const t = line.trim();
     if(!t) return;
-    let f = (t.indexOf('\t')>=0 ? t.split('\t') : t.split(',')).map(x=> String(x).trim());
-    if(f.length >= 5 && /^\d+$/.test(f[0])) f = f.slice(1);   // 표의 번호 칸 무시
+    let f;
+    if(t.indexOf('\t')>=0)      f = t.split('\t');          // 엑셀 복사
+    else if(t.indexOf(',')>=0)  f = t.split(',');            // 쉼표
+    else if(/ {2,}/.test(t))    f = t.split(/ {2,}/);        // 두 칸 이상 띄어쓰기
+    else {
+      // 한 칸 띄어쓰기: 구역 / 인도자 / (가운데 전부)관계 / 대상자
+      let w = t.split(/\s+/);
+      if(w.length >= 5 && /^\d+$/.test(w[0])) w = w.slice(1);   // 표의 번호 무시
+      if(w.length < 4) return;
+      f = [w[0], w[1], w.slice(2, w.length-1).join(' '), w[w.length-1]];
+    }
+    f = f.map(x=> String(x).trim());
+    if(f.length >= 5 && /^\d+$/.test(f[0])) f = f.slice(1);
     if(f.length < 4) return;
-    const zone = f[0]||'', leader = f[1]||'', relation = f[2]||'', name = f[3]||'', church = f[4]||'';
+    // 타교회는 "타교회/은혜교회" 처럼 구역 칸에 교회명을 붙여 적는다
+    let zone = f[0]||'', church = '';
+    const m = zone.match(/^([^\/／]+)[\/／](.+)$/);
+    if(m){ zone = m[1].trim(); church = m[2].trim(); }
+    const leader = f[1]||'', relation = f[2]||'', name = f[3]||'', note = f[4]||'';
     if(!name) return;
-    out.push({ zone, leader, relation, name, church });
+    out.push({ zone, leader, relation, name, note, church });
   });
   return out;
 }
@@ -1161,7 +1178,7 @@ function importRoster(rows){
   let added = 0, skipped = 0;
   rows.forEach(r=>{
     const t = { id:uid(), zone:r.zone, church:(r.zone===EXT_ZONE ? (r.church||'') : ''),
-                leader:r.leader, relation:r.relation, name:r.name, note:'',
+                leader:r.leader, relation:r.relation, name:r.name, note:(r.note||''),
                 attend:{}, enrolled:false, inPray:true };
     if(DB.targets.some(x=> sameTarget(x, t))){ skipped++; return; }
     if(t.zone && !DB.settings.zones.includes(t.zone)){ DB.settings.zones.push(t.zone); DB.settings.zones.sort(zoneCmp); }
@@ -1172,12 +1189,14 @@ function importRoster(rows){
 function openImportSheet(){
   if(!canEdit()) return;
   const body = `
-    <div class="muted" style="margin-bottom:10px; line-height:1.6">
-      한 줄에 한 사람씩 <b>구역, 인도자, 관계, 대상자</b> 순서로 붙여넣으세요.<br>
-      쉼표 또는 탭(엑셀에서 복사)으로 구분하며, 맨 앞의 번호는 자동으로 무시합니다.<br>
-      구역이 <b>타교회</b>인 줄은 맨 끝에 교회명을 하나 더 적어 주세요.
+    <div class="muted" style="margin-bottom:10px; line-height:1.7">
+      한 줄에 한 사람씩 <b>구역 인도자 관계 대상자 비고</b> 순서로, <b>띄어쓰기</b>로 구분해 붙여넣으세요.
+      (비고는 없어도 됩니다 · 맨 앞 번호는 무시합니다)<br>
+      <span style="color:var(--gold-soft)">전 직장동료</span>처럼 <b>칸 안에 띄어쓰기</b>가 있으면 칸 사이를 <b>두 칸</b> 띄우거나 쉼표로 나누세요.
+      엑셀에서 복사한 것도 그대로 됩니다.<br>
+      타교회는 구역 칸에 <b>타교회/은혜교회</b> 처럼 적습니다.
     </div>
-    <div class="field"><textarea id="imp-text" rows="10" placeholder="11구역, 조성영B, 지인, 김진우&#10;11구역, 김세동B, 아버지, 김병대"></textarea></div>
+    <div class="field"><textarea id="imp-text" rows="10" placeholder="11구역 조성영B 지인 김진우&#10;11구역 김세동B 아버지 김병대&#10;12구역 지민경S  전 직장동료  박근희"></textarea></div>
     <div class="muted" id="imp-info">붙여넣으면 여기에 인식 결과가 표시됩니다.</div>`;
   openSheet('명단 붙여넣기', body, ()=>{
     const rows = parseRosterText(($('#imp-text')||{value:''}).value);
@@ -1966,9 +1985,6 @@ function openSettingsSheet(){
     <div class="section-title">실시간 공유 (여러 기기에서 함께 보기)</div>
     <div id="sync-box"></div>
 
-    <div class="section-title">명단 가져오기</div>
-    <div class="list-row"><div class="lr-main"><div class="t">명단 붙여넣기</div><div class="d">엑셀·문자에서 복사한 명단을 한 번에 기도명단에 등록</div></div><button class="btn btn-secondary btn-sm" id="s-paste">붙여넣기</button></div>
-
     <div class="section-title">백업 · 내보내기</div>
     <div class="list-row"><div class="lr-main"><div class="t">엑셀(CSV) 내보내기</div><div class="d">명단·출석·메모를 엑셀 파일로 저장</div></div><button class="btn btn-secondary btn-sm" id="s-csv">저장</button></div>
     <div class="list-row"><div class="lr-main"><div class="t">데이터 내보내기</div><div class="d">현재 집회를 JSON 파일로 저장</div></div><button class="btn btn-secondary btn-sm" id="s-export">내보내기</button></div>
@@ -2009,7 +2025,6 @@ function openSettingsSheet(){
   renderZoneTags(); renderDayList(); renderSyncBox(); renderFsPills(); renderPqPills();
   $('#zone-add').onclick = ()=>{ const v=$('#zone-new').value.trim(); if(v && !DB.settings.zones.includes(v)){ DB.settings.zones.push(v); DB.settings.zones.sort(zoneCmp); saveDB(); } $('#zone-new').value=''; renderZoneTags(); };
   $('#day-add').onclick = ()=>{ const v=$('#day-new').value.trim(); if(v){ DB.settings.days.push({label:v}); saveDB(); } $('#day-new').value=''; renderDayList(); };
-  const pasteBtn = $('#s-paste'); if(pasteBtn) pasteBtn.onclick = openImportSheet;
   $('#s-export').onclick = exportJSON;
   $('#s-csv').onclick = exportCSV;
   $('#s-import').onclick = ()=> $('#jsonInput').click();
