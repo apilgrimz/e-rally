@@ -394,7 +394,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.10.11-48';
+const APP_VERSION = '2026.10.11-50';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -1459,7 +1459,7 @@ function splitEven(n, pages){
   for(let p=0; p<pages; p++){ const c = base + (p<rem?1:0); out.push([i, i+c]); i += c; }
   return out;
 }
-function pageWrap(html, isLast, dense){ return `<div class="pr-page${isLast?'':' pbreak'}${dense?' pr-dense':''}">${html}</div>`; }
+function pageWrap(html, isLast, dense, fit){ return `<div class="pr-page${isLast?'':' pbreak'}${dense?' pr-dense':''}${fit?' pr-fit':''}">${html}</div>`; }
 
 /* ----- 전도현황 (가로) ----- */
 function statusBlock(arr, startNo, withSum, fullList){
@@ -1499,7 +1499,8 @@ function statusBlock(arr, startNo, withSum, fullList){
   return `<table class="pr statuspr"><colgroup>${cols}</colgroup>${head}${body}</table>`;
 }
 const STATUS_PER_PAGE = 24;   // A4 가로 한 쪽 (합계 3줄은 마지막 쪽에서 뺌)
-const STATUS_DENSE_FROM = 14; // 이보다 줄이 많으면 간격을 좁힌다
+const STATUS_DENSE_FROM = 14; // 이보다 줄이 많으면 글자·여백을 줄인다
+const STATUS_FILL_FROM = 15;  // 이보다 줄이 많으면 쪽을 꽉 채운다
 function buildStatusPrint(paginate){
   const list = enrolledTargets();
   const n = list.length;
@@ -1507,7 +1508,7 @@ function buildStatusPrint(paginate){
     return prTitle('전도 현황') + statusBlock(list, 1, true, list);
   }
   if(n <= STATUS_PER_PAGE - 3){
-    return pageWrap(prTitle('전도 현황') + statusBlock(list, 1, true, list), true, n > STATUS_DENSE_FROM);
+    return pageWrap(prTitle('전도 현황') + statusBlock(list, 1, true, list), true, n > STATUS_DENSE_FROM, n >= STATUS_FILL_FROM);
   }
   let pages = 1;
   while(n > pages*STATUS_PER_PAGE - 3) pages++;
@@ -1516,7 +1517,7 @@ function buildStatusPrint(paginate){
     const isLast = (pi === pages-1);
     let p = prTitle('전도 현황', `총 ${n}명 · ${pi+1} / ${pages}`);
     p += statusBlock(list.slice(a,b), a+1, isLast, list);
-    h += pageWrap(p, isLast, (b-a) > STATUS_DENSE_FROM);
+    h += pageWrap(p, isLast, (b-a) > STATUS_DENSE_FROM, (b-a) >= STATUS_FILL_FROM);
   });
   return h;
 }
@@ -1541,7 +1542,8 @@ function praySplit(seg, startNo){
   return `<div class="pr-split"><div>${prayBlock(seg.slice(0,half), startNo)}</div><div>${prayBlock(seg.slice(half), startNo+half)}</div></div>`;
 }
 const PRAY_PER_PAGE = 70;     // 2단 × 35줄
-const PRAY_DENSE_FROM = 28;   // 한 단에 이보다 많으면 간격을 좁힌다
+const PRAY_DENSE_FROM = 28;   // 한 단에 이보다 많으면 글자·여백을 줄인다
+const PRAY_FILL_FROM = 40;    // 한 쪽에 이보다 많으면 줄을 늘려 쪽을 꽉 채운다
 function buildPrayPrint(paginate){
   const list = prayTargets();
   const n = list.length;
@@ -1549,7 +1551,7 @@ function buildPrayPrint(paginate){
     return prTitle('기도 명단', `총 ${n}명`) + praySplit(list, 1);
   }
   if(n <= PRAY_PER_PAGE){
-    return pageWrap(prTitle('기도 명단', `총 ${n}명`) + praySplit(list, 1), true, Math.ceil(n/2) > PRAY_DENSE_FROM);
+    return pageWrap(prTitle('기도 명단', `총 ${n}명`) + praySplit(list, 1), true, Math.ceil(n/2) > PRAY_DENSE_FROM, n >= PRAY_FILL_FROM);
   }
   const pages = Math.max(1, Math.ceil(n / PRAY_PER_PAGE));
   let h = '';
@@ -1557,7 +1559,7 @@ function buildPrayPrint(paginate){
     const isLast = (pi === pages-1);
     let p = prTitle('기도 명단', `총 ${n}명 · ${pi+1} / ${pages}`);
     p += praySplit(list.slice(a,b), a+1);
-    h += pageWrap(p, isLast, Math.ceil((b-a)/2) > PRAY_DENSE_FROM);
+    h += pageWrap(p, isLast, Math.ceil((b-a)/2) > PRAY_DENSE_FROM, (b-a) >= PRAY_FILL_FROM);
   });
   return h;
 }
@@ -1730,6 +1732,18 @@ function doPrint(view){
       .pa-page > table.pr { flex:1 1 auto; }
       .pa-page > table.pr tbody td, .pa-page > table.pr tbody th { vertical-align:middle; }
     }` : '';
+  // 명단(기도명단·전도현황): 쪽을 세로로 꽉 채워 아래 여백이 남지 않게
+  const listFillCSS = (view==='pray' || view==='status') ? `
+    @page { size:A4 ${orient}; margin:${marginMM}mm; }
+    @media print {
+      .pr-page { box-sizing:border-box; }
+      .pr-page.pr-fit { height:${printableH}mm; display:flex; flex-direction:column; }
+      .pr-page.pr-fit > .pr-split { flex:1 1 auto; align-items:stretch; }
+      .pr-page.pr-fit > .pr-split > div { display:flex; flex-direction:column; }
+      .pr-page.pr-fit > .pr-split > div > table.pr { flex:1 1 auto; }
+      .pr-page.pr-fit > table.pr { flex:1 1 auto; }
+      .pr-page.pr-fit table.pr tbody td, .pr-page.pr-fit table.pr tbody th { vertical-align:middle; }
+    }` : '';
   const screenCSS = `
     html,body{background:#f3f4f6;}
     .pa-bar{position:sticky;top:0;display:flex;gap:8px;justify-content:center;padding:10px;background:#fff;border-bottom:1px solid #ccc;z-index:9;}
@@ -1737,7 +1751,7 @@ function doPrint(view){
     .pa-bar .go{background:#1b244c;color:#fff;border-color:#1b244c;}
     .pa-page{background:#fff;margin:14px auto;padding:${marginMM}mm;max-width:${orient==='landscape'?'297mm':'210mm'};box-shadow:0 2px 12px rgba(0,0,0,.18);}
     @media print { .pa-bar{display:none!important;} html,body{background:#fff;} .pa-page{margin:0;padding:0;box-shadow:none;max-width:none;} }`;
-  const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"><style>${printCSS(orient)}${compactCSS}${fillCSS}${screenCSS}</style></head><body><div class="pa-bar"><button class="go" onclick="window.print()">🖨 인쇄 / 저장</button><button onclick="window.close()">닫기</button></div><div class="pa-page">${inner}</div><script>window.addEventListener('load',function(){setTimeout(function(){try{window.focus();window.print();}catch(e){}},500);});<\/script></body></html>`;
+  const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"><style>${printCSS(orient)}${compactCSS}${fillCSS}${listFillCSS}${screenCSS}</style></head><body><div class="pa-bar"><button class="go" onclick="window.print()">🖨 인쇄 / 저장</button><button onclick="window.close()">닫기</button></div><div class="pa-page">${inner}</div><script>window.addEventListener('load',function(){setTimeout(function(){try{window.focus();window.print();}catch(e){}},500);});<\/script></body></html>`;
 
   // 1순위: 새 창 (모바일/웹뷰 호환, 실패 시 수동 인쇄 버튼 제공)
   let win = null;
