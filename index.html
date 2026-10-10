@@ -394,7 +394,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.10.11-47';
+const APP_VERSION = '2026.10.11-48';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -1459,15 +1459,15 @@ function splitEven(n, pages){
   for(let p=0; p<pages; p++){ const c = base + (p<rem?1:0); out.push([i, i+c]); i += c; }
   return out;
 }
-function pageWrap(html, isLast){ return `<div class="pr-page${isLast?'':' pbreak'}">${html}</div>`; }
+function pageWrap(html, isLast, dense){ return `<div class="pr-page${isLast?'':' pbreak'}${dense?' pr-dense':''}">${html}</div>`; }
 
 /* ----- 전도현황 (가로) ----- */
 function statusBlock(arr, startNo, withSum, fullList){
   const days = DB.settings.days;
   const zoneSpans = computeSpans(arr, t=> zoneDisplay(t));
   const leaderSpans = computeSpans(arr, t=> zoneDisplay(t)+'||'+t.leader);
-  let cols = `<col style="width:5%"><col style="width:7%"><col style="width:9%"><col style="width:7%"><col style="width:10%">`;
-  const dayW = (62/Math.max(1,days.length)).toFixed(2);
+  let cols = `<col style="width:4%"><col style="width:7%"><col style="width:8%"><col style="width:15%"><col style="width:8%">`;
+  const dayW = (58/Math.max(1,days.length)).toFixed(2);
   days.forEach(()=> cols += `<col style="width:${dayW/2}%"><col style="width:${dayW/2}%">`);
   let head = `<thead><tr><th rowspan="2">번호</th><th rowspan="2">구역</th><th rowspan="2">인도자</th><th rowspan="2">관계</th><th rowspan="2">대상자</th>`;
   days.forEach(d=> head += `<th colspan="2">${esc(d.label)}</th>`);
@@ -1498,12 +1498,16 @@ function statusBlock(arr, startNo, withSum, fullList){
   body += '</tbody>';
   return `<table class="pr statuspr"><colgroup>${cols}</colgroup>${head}${body}</table>`;
 }
-const STATUS_PER_PAGE = 20;   // A4 가로 한 쪽에 들어가는 줄 수 (합계 3줄은 마지막 쪽에서 뺌)
+const STATUS_PER_PAGE = 24;   // A4 가로 한 쪽 (합계 3줄은 마지막 쪽에서 뺌)
+const STATUS_DENSE_FROM = 14; // 이보다 줄이 많으면 간격을 좁힌다
 function buildStatusPrint(paginate){
   const list = enrolledTargets();
   const n = list.length;
-  if(!paginate || n <= STATUS_PER_PAGE - 3){
+  if(!paginate){
     return prTitle('전도 현황') + statusBlock(list, 1, true, list);
+  }
+  if(n <= STATUS_PER_PAGE - 3){
+    return pageWrap(prTitle('전도 현황') + statusBlock(list, 1, true, list), true, n > STATUS_DENSE_FROM);
   }
   let pages = 1;
   while(n > pages*STATUS_PER_PAGE - 3) pages++;
@@ -1512,7 +1516,7 @@ function buildStatusPrint(paginate){
     const isLast = (pi === pages-1);
     let p = prTitle('전도 현황', `총 ${n}명 · ${pi+1} / ${pages}`);
     p += statusBlock(list.slice(a,b), a+1, isLast, list);
-    h += pageWrap(p, isLast);
+    h += pageWrap(p, isLast, (b-a) > STATUS_DENSE_FROM);
   });
   return h;
 }
@@ -1537,11 +1541,15 @@ function praySplit(seg, startNo){
   return `<div class="pr-split"><div>${prayBlock(seg.slice(0,half), startNo)}</div><div>${prayBlock(seg.slice(half), startNo+half)}</div></div>`;
 }
 const PRAY_PER_PAGE = 70;     // 2단 × 35줄
+const PRAY_DENSE_FROM = 28;   // 한 단에 이보다 많으면 간격을 좁힌다
 function buildPrayPrint(paginate){
   const list = prayTargets();
   const n = list.length;
-  if(!paginate || n <= PRAY_PER_PAGE){
+  if(!paginate){
     return prTitle('기도 명단', `총 ${n}명`) + praySplit(list, 1);
+  }
+  if(n <= PRAY_PER_PAGE){
+    return pageWrap(prTitle('기도 명단', `총 ${n}명`) + praySplit(list, 1), true, Math.ceil(n/2) > PRAY_DENSE_FROM);
   }
   const pages = Math.max(1, Math.ceil(n / PRAY_PER_PAGE));
   let h = '';
@@ -1549,7 +1557,7 @@ function buildPrayPrint(paginate){
     const isLast = (pi === pages-1);
     let p = prTitle('기도 명단', `총 ${n}명 · ${pi+1} / ${pages}`);
     p += praySplit(list.slice(a,b), a+1);
-    h += pageWrap(p, isLast);
+    h += pageWrap(p, isLast, Math.ceil((b-a)/2) > PRAY_DENSE_FROM);
   });
   return h;
 }
@@ -1679,6 +1687,12 @@ function printCSS(orient){
     .pr-page.pbreak { page-break-after:always; break-after:page; }
     .pr-page + .pr-page { padding-top:2mm; }
     table.pr.praypr th, table.pr.praypr td { padding:4px 4px; }
+    .pr-dense .pr-title { font-size:19px; }
+    .pr-dense .pr-sub { font-size:11.5px; }
+    .pr-dense .pr-rule { margin:0 0 8px; }
+    .pr-dense table.pr th, .pr-dense table.pr td { font-size:11px; padding:2.5px 3px; line-height:1.3; }
+    .pr-dense table.pr thead th { font-size:10.5px; padding:4px 3px; }
+    .pr-dense table.pr td.nm { font-size:11.5px; }
     table.pr.praypr td.ld, table.pr.praypr td.nm { word-break:keep-all; }
     table.pr.statuspr td.ld, table.pr.statuspr td.nm { word-break:keep-all; }
     table.pr.planpr { table-layout:auto; }
