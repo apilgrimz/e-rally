@@ -394,7 +394,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.10.03-44';
+const APP_VERSION = '2026.10.10-45';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -1137,6 +1137,65 @@ $('#sheetCancel').onclick = ()=> closeSheet();
 $('#sheetBackdrop').onclick = ()=> closeSheet();
 $('#sheetSave').onclick = ()=>{ if(sheetCtx && sheetCtx.save) sheetCtx.save(); };
 
+/* ===== 명단 붙여넣기 가져오기 =====
+   한 줄에 한 사람: 구역, 인도자, 관계, 대상자 [, 교회명(타교회일 때)]
+   쉼표 또는 탭(엑셀 복사) 구분. 맨 앞 번호는 무시. */
+function parseRosterText(text){
+  const out = [];
+  String(text||'').split(/\r?\n/).forEach(line=>{
+    const t = line.trim();
+    if(!t) return;
+    let f = (t.indexOf('\t')>=0 ? t.split('\t') : t.split(',')).map(x=> String(x).trim());
+    if(f.length >= 5 && /^\d+$/.test(f[0])) f = f.slice(1);   // 표의 번호 칸 무시
+    if(f.length < 4) return;
+    const zone = f[0]||'', leader = f[1]||'', relation = f[2]||'', name = f[3]||'', church = f[4]||'';
+    if(!name) return;
+    out.push({ zone, leader, relation, name, church });
+  });
+  return out;
+}
+function rosterDupCount(rows){
+  return rows.filter(r=> DB.targets.some(x=> sameTarget(x, { name:r.name, zone:r.zone, church:r.church }))).length;
+}
+function importRoster(rows){
+  let added = 0, skipped = 0;
+  rows.forEach(r=>{
+    const t = { id:uid(), zone:r.zone, church:(r.zone===EXT_ZONE ? (r.church||'') : ''),
+                leader:r.leader, relation:r.relation, name:r.name, note:'',
+                attend:{}, enrolled:false, inPray:true };
+    if(DB.targets.some(x=> sameTarget(x, t))){ skipped++; return; }
+    if(t.zone && !DB.settings.zones.includes(t.zone)){ DB.settings.zones.push(t.zone); DB.settings.zones.sort(zoneCmp); }
+    DB.targets.push(t); added++;
+  });
+  return { added, skipped };
+}
+function openImportSheet(){
+  if(!canEdit()) return;
+  const body = `
+    <div class="muted" style="margin-bottom:10px; line-height:1.6">
+      한 줄에 한 사람씩 <b>구역, 인도자, 관계, 대상자</b> 순서로 붙여넣으세요.<br>
+      쉼표 또는 탭(엑셀에서 복사)으로 구분하며, 맨 앞의 번호는 자동으로 무시합니다.<br>
+      구역이 <b>타교회</b>인 줄은 맨 끝에 교회명을 하나 더 적어 주세요.
+    </div>
+    <div class="field"><textarea id="imp-text" rows="10" placeholder="11구역, 조성영B, 지인, 김진우&#10;11구역, 김세동B, 아버지, 김병대"></textarea></div>
+    <div class="muted" id="imp-info">붙여넣으면 여기에 인식 결과가 표시됩니다.</div>`;
+  openSheet('명단 붙여넣기', body, ()=>{
+    const rows = parseRosterText(($('#imp-text')||{value:''}).value);
+    if(!rows.length){ toast('읽을 수 있는 줄이 없어요'); return; }
+    const r = importRoster(rows);
+    saveDB(); closeSheet(); setTab('pray');
+    toast(`${r.added}명 추가${r.skipped?` · 이미 있는 ${r.skipped}명 건너뜀`:''}`);
+  }, { saveLabel:'등록' });
+  const ta = $('#imp-text'), info = $('#imp-info');
+  if(ta && info){
+    ta.oninput = ()=>{
+      const rows = parseRosterText(ta.value);
+      if(!rows.length){ info.textContent = '읽을 수 있는 줄이 없습니다.'; return; }
+      const dup = rosterDupCount(rows);
+      info.innerHTML = `<b>${rows.length}명</b> 인식` + (dup?` · 이미 있는 <b>${dup}명</b>은 건너뜁니다` : '');
+    };
+  }
+}
 function openTargetSheet(target, isNew){
   if(!canEdit()) return;
   const t = target;
@@ -1907,6 +1966,9 @@ function openSettingsSheet(){
     <div class="section-title">실시간 공유 (여러 기기에서 함께 보기)</div>
     <div id="sync-box"></div>
 
+    <div class="section-title">명단 가져오기</div>
+    <div class="list-row"><div class="lr-main"><div class="t">명단 붙여넣기</div><div class="d">엑셀·문자에서 복사한 명단을 한 번에 기도명단에 등록</div></div><button class="btn btn-secondary btn-sm" id="s-paste">붙여넣기</button></div>
+
     <div class="section-title">백업 · 내보내기</div>
     <div class="list-row"><div class="lr-main"><div class="t">엑셀(CSV) 내보내기</div><div class="d">명단·출석·메모를 엑셀 파일로 저장</div></div><button class="btn btn-secondary btn-sm" id="s-csv">저장</button></div>
     <div class="list-row"><div class="lr-main"><div class="t">데이터 내보내기</div><div class="d">현재 집회를 JSON 파일로 저장</div></div><button class="btn btn-secondary btn-sm" id="s-export">내보내기</button></div>
@@ -1947,6 +2009,7 @@ function openSettingsSheet(){
   renderZoneTags(); renderDayList(); renderSyncBox(); renderFsPills(); renderPqPills();
   $('#zone-add').onclick = ()=>{ const v=$('#zone-new').value.trim(); if(v && !DB.settings.zones.includes(v)){ DB.settings.zones.push(v); DB.settings.zones.sort(zoneCmp); saveDB(); } $('#zone-new').value=''; renderZoneTags(); };
   $('#day-add').onclick = ()=>{ const v=$('#day-new').value.trim(); if(v){ DB.settings.days.push({label:v}); saveDB(); } $('#day-new').value=''; renderDayList(); };
+  const pasteBtn = $('#s-paste'); if(pasteBtn) pasteBtn.onclick = openImportSheet;
   $('#s-export').onclick = exportJSON;
   $('#s-csv').onclick = exportCSV;
   $('#s-import').onclick = ()=> $('#jsonInput').click();
