@@ -394,7 +394,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.10.11-50';
+const APP_VERSION = '2026.10.13-52';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -694,8 +694,15 @@ function render(){
   requestAnimationFrame(fitScrollers);
 }
 /* 표 스크롤 영역 높이를 #view 안쪽에 정확히 맞춤 — 마지막 행이 탭바에 가리지 않도록 */
+let _lastScrollerH = 0;
 function fitScrollers(){
   const view = $('#view'); if(!view) return;
+  // 시트(입력창)가 열려 있으면 소프트 키보드로 화면이 줄어든 상태 → 직전 높이를 그대로 유지
+  const sh = document.getElementById('sheet');
+  if(sh && sh.classList.contains('show')){
+    if(_lastScrollerH) $$('#view .tbl-scroll, #view .pl-wrap').forEach(el=> el.style.maxHeight = _lastScrollerH + 'px');
+    return;
+  }
   const z = document.documentElement.classList.contains('fs-xl') ? 1.27
           : document.documentElement.classList.contains('fs-lg') ? 1.13 : 1;
   const vb = view.getBoundingClientRect().bottom;
@@ -705,7 +712,9 @@ function fitScrollers(){
     const prev = el.scrollTop;
     const top = el.getBoundingClientRect().top;
     const avail = (vb - padB - top - 2) / z;
-    el.style.maxHeight = Math.max(160, Math.round(avail)) + 'px';
+    const h = Math.max(160, Math.round(avail));
+    el.style.maxHeight = h + 'px';
+    _lastScrollerH = h;
     el.scrollTop = prev;            // 높이 재설정 후 스크롤 위치 복원(튐 방지)
   });
   view.scrollTop = vTop;
@@ -1217,7 +1226,8 @@ function openImportSheet(){
 }
 function openTargetSheet(target, isNew){
   if(!canEdit()) return;
-  const t = target;
+  let t = target;                     // 연속 추가 때 새 객체로 교체되므로 let
+  let addedCount = 0;                 // 이번에 이어서 추가한 인원
   const zones = DB.settings.zones.includes(EXT_ZONE) ? DB.settings.zones : DB.settings.zones.concat([EXT_ZONE]);
   const zoneOpts = zones.map(z=> `<option value="${esc(z)}" ${z===t.zone?'selected':''}>${esc(z)}</option>`).join('');
   const body = `
@@ -1231,49 +1241,77 @@ function openTargetSheet(target, isNew){
     </div>
     <div class="field"><label>대상자 이름</label><input id="f-name" value="${esc(t.name)}" placeholder="대상자 이름" autofocus/></div>
     <div class="field"><label>비고</label><input id="f-note" value="${esc(t.note)}" placeholder="메모 (선택)"/></div>
-    ${isNew?'':'<button class="btn btn-danger btn-block" id="f-del">대상자 삭제</button>'}
+    ${isNew?`<button class="btn btn-secondary btn-block" id="f-more">＋ 저장하고 계속 추가</button>
+      <div class="muted" id="f-more-info" style="margin-top:6px">구역·인도자는 그대로 두고 관계·이름만 바꿔 이어서 넣을 수 있어요.</div>`
+      :'<button class="btn btn-danger btn-block" id="f-del">대상자 삭제</button>'}
   `;
-  openSheet(isNew?'대상자 추가':'대상자 편집', body, ()=>{
-    t.zone = $('#f-zone').value;
-    t.church = (t.zone===EXT_ZONE) ? ($('#f-church').value.trim()) : '';
-    t.leader = $('#f-leader').value.trim();
-    t.relation = $('#f-rel').value.trim();
-    t.name = $('#f-name').value.trim();
-    t.note = $('#f-note').value.trim();
-    if(!t.name){ toast('대상자 이름을 입력하세요'); return; }
-    if(t.zone===EXT_ZONE && !t.church){ toast('교회명을 입력하세요'); return; }
 
+  // 입력칸 → 객체
+  function readForm(o){
+    const zone = $('#f-zone').value;
+    const church = (zone===EXT_ZONE) ? (($('#f-church')||{value:''}).value.trim()) : '';
+    const name = $('#f-name').value.trim();
+    if(!name){ toast('대상자 이름을 입력하세요'); return false; }
+    if(zone===EXT_ZONE && !church){ toast('교회명을 입력하세요'); return false; }
+    o.zone = zone; o.church = church; o.name = name;
+    o.leader = $('#f-leader').value.trim();
+    o.relation = $('#f-rel').value.trim();
+    o.note = $('#f-note').value.trim();
+    return true;
+  }
+  // 다음 사람 입력 준비 — 구역·교회명·인도자는 그대로 두고 관계·이름·비고만 비움
+  function resetForNext(){
+    t = { id:uid(), zone:t.zone, church:t.church, leader:t.leader,
+          relation:'', name:'', note:'', attend:{}, enrolled: currentTab==='status', inPray:true };
+    const rel=$('#f-rel'), nm=$('#f-name'), nt=$('#f-note');
+    if(rel) rel.value='';
+    if(nm) nm.value='';
+    if(nt) nt.value='';
+    const info = $('#f-more-info');
+    if(info) info.innerHTML = `이어서 <b>${addedCount}명</b> 추가했어요. 관계·이름만 바꿔 계속 넣으세요.`;
+    rerenderPreserve();
+    if(rel) rel.focus();
+  }
+  function commit(keepOpen){
+    if(!readForm(t)) return;
     if(isNew){
       const fromStatus = (currentTab==='status');
       // 같은 구역·같은 이름이 이미 있으면 중복으로 추가하지 않고 기존 대상자에 반영
       const dup = DB.targets.find(x=> sameTarget(x, t));
       if(dup){
+        let msg;
         if(fromStatus){
-          if(dup.enrolled && dup.inPray){ toast('이미 등록된 대상자예요'); closeSheet(); return; }
-          dup.enrolled = true; dup.attend = {}; dup.inPray = true;
-          saveDB(); closeSheet(); rerenderPreserve();
-          toast('이미 있는 대상자라 참석 등록했어요');
+          if(dup.enrolled && dup.inPray){ msg = '이미 등록된 대상자예요'; }
+          else { dup.enrolled = true; dup.attend = {}; dup.inPray = true; saveDB(); msg = '이미 있는 대상자라 참석 등록했어요'; }
         }else{
-          if(dup.inPray){ toast('이미 기도명단에 있는 대상자예요'); closeSheet(); return; }
-          dup.inPray = true;
-          saveDB(); closeSheet(); rerenderPreserve();
-          toast('기도명단에 추가했어요');
+          if(dup.inPray){ msg = '이미 기도명단에 있는 대상자예요'; }
+          else { dup.inPray = true; saveDB(); msg = '기도명단에 추가했어요'; }
         }
+        if(keepOpen){ resetForNext(); toast(msg); }
+        else { closeSheet(); rerenderPreserve(); toast(msg); }
         return;
       }
       // 신규: 기도명단에 항상 올리고, 전도현황에서 추가했으면 참석도 자동 체크
       t.inPray = true;
       DB.targets.push(t);
+      addedCount++;
     }
-    saveDB(); closeSheet(); rerenderPreserve();
-    toast(isNew?'추가되었습니다':'저장되었습니다');
-  });
+    saveDB();
+    if(keepOpen){ resetForNext(); toast(`'${t.name}' 추가 · 이어서 입력하세요`); return; }
+    closeSheet(); rerenderPreserve();
+    toast(isNew ? (addedCount>1 ? `${addedCount}명 추가되었습니다` : '추가되었습니다') : '저장되었습니다');
+  }
+
+  openSheet(isNew?'대상자 추가':'대상자 편집', body, ()=> commit(false));
+
   // 구역이 '타교회'일 때만 교회명 입력칸 표시
   const zsel = $('#f-zone');
   if(zsel) zsel.onchange = ()=>{
     const w = $('#f-church-wrap');
     if(w){ w.style.display = (zsel.value===EXT_ZONE) ? 'block' : 'none'; if(zsel.value===EXT_ZONE){ const ci=$('#f-church'); if(ci) ci.focus(); } }
   };
+  const moreBtn = $('#f-more');
+  if(moreBtn) moreBtn.onclick = ()=> commit(true);
   if(!isNew){
     $('#f-del').onclick = ()=> confirmModal('대상자 삭제', `'${t.name||'이 대상자'}'을(를) 삭제할까요?`, ()=>{
       const idx = DB.targets.findIndex(x=>x.id===t.id);
