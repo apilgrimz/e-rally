@@ -394,7 +394,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.10.19-53';
+const APP_VERSION = '2026.10.19-54';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -1497,7 +1497,108 @@ function splitEven(n, pages){
   for(let p=0; p<pages; p++){ const c = base + (p<rem?1:0); out.push([i, i+c]); i += c; }
   return out;
 }
-function pageWrap(html, isLast, dense, fit){ return `<div class="pr-page${isLast?'':' pbreak'}${dense?' pr-dense':''}${fit?' pr-fit':''}">${html}</div>`; }
+function pageWrap(html, isLast, dense, fit, vars){
+  return `<div class="pr-page${isLast?'':' pbreak'}${dense?' pr-dense':''}${fit?' pr-fit':''}"${vars?` style="${vars}"`:''}>${html}</div>`;
+}
+/* 명단 인쇄 — 한 쪽에 들어갈 줄 수로 줄 높이를 알 수 있으므로, 그 높이에 맞춰 글자 크기를 정한다.
+   (칸이 커지면 글자도 같이 커져 '칸에 비해 글자가 작아' 보이지 않게) */
+const PR_GEO = {
+  // avail = A4 인쇄 가능 높이에서 제목줄·안전여백을 뺀 높이(mm)
+  // relPx·namePx = 인쇄될 '관계'·'대상자' 칸에 글자가 들어갈 수 있는 가로폭(px, 안쪽 여백 제외)
+  pray:   { avail:247, headEq:0.92, relPx:134, namePx:50 },   // 세로, 2단
+  status: { avail:165, headEq:2.12, relPx:149, namePx:75 }    // 가로, 머리글 2줄
+};
+/* 글자 폭 어림 (em) — 한글·한자·가나 1, 영문·숫자 0.55, 공백 0.35 */
+function textEm(s){
+  const t = String(s||''); let w = 0;
+  for(let i=0; i<t.length; i++){
+    const c = t.charCodeAt(i);
+    if(t[i] === ' ') w += 0.35;
+    else if((c>=0x1100&&c<=0x11FF)||(c>=0x3130&&c<=0x318F)||(c>=0xAC00&&c<=0xD7AF)||
+            (c>=0x4E00&&c<=0x9FFF)||(c>=0x3040&&c<=0x30FF)) w += 1;
+    else w += 0.55;
+  }
+  return w;
+}
+/* 한 칸의 글이 몇 줄이 되는지 — 표에는 word-break:keep-all 이 걸려 있어 낱말 단위로 줄이 바뀐다 */
+function wrapLines(s, colPx, fontPx){
+  const words = String(s||'').trim().split(/\s+/).filter(Boolean);
+  if(!words.length || colPx <= 0) return 1;
+  const sp = 0.35 * fontPx;
+  let lines = 1, cur = -1;
+  words.forEach(w=>{
+    const ww = textEm(w) * fontPx;
+    if(cur < 0) cur = ww;
+    else if(cur + sp + ww <= colPx) cur += sp + ww;
+    else { lines++; cur = ww; }
+    if(cur > colPx){ lines += Math.ceil(cur/colPx) - 1; cur = colPx; }  // 낱말 하나가 칸보다 길면 쪼개진다
+  });
+  return lines;
+}
+/* 관계·대상자가 길어 두세 줄이 될 때 늘어나는 줄 수.
+   줄 높이는 그 줄에서 가장 높은 칸이 정하므로 두 칸 중 많은 쪽을 센다.
+   (구역·인도자는 여러 줄로 합쳐지는 칸이라 줄 높이를 거의 좌우하지 않아 뺀다) */
+function rowExtraLines(list, g, fontPx){
+  let e = 0;
+  (list||[]).forEach(t=>{
+    const rel  = wrapLines(t.relation, g.relPx, fontPx);
+    const name = wrapLines(t.name, g.namePx, fontPx+1);
+    e += Math.min(3, Math.max(0, Math.max(rel, name) - 1));
+  });
+  return e;
+}
+/* 이 분량을 한 쪽에 담을 때의 줄 높이·글자 크기를 구한다.
+   글자가 커지면 '관계'가 줄바꿈되는 칸이 늘고, 그러면 자리가 더 필요해 글자가 작아지므로 — 값이 수렴할 때까지 반복한다.
+   fits=false 는 글자를 가장 작게 해도 한 쪽에 안 들어간다는 뜻 (쪽을 하나 더 써야 한다). */
+const PR_MINROW_PX = 11*1.3 + 2*1.8 + 1;     // 가장 작은 글자(11px)일 때의 줄 높이
+function listMetrics(view, rowsPerPage, cols){
+  const g = PR_GEO[view];
+  const units = used => rowsPerPage + g.headEq + 0.4 + used*0.72;
+  const extraAt = fsz => (cols && cols.length) ? Math.max.apply(null, cols.map(c=> rowExtraLines(c, g, fsz))) : 1;
+  const fontAt  = u   => Math.max(11, Math.min(18, (((g.avail / units(u)) * 96/25.4) * 0.72) / 1.3));
+  // 글자가 커지면 줄바꿈이 늘고, 줄바꿈이 늘면 글자가 작아진다 — 값이 자리잡을 때까지 번갈아 계산한다
+  let prev = (cols && cols.length) ? 0 : 1, cur = prev;
+  for(let i=0; i<6; i++){
+    const e = extraAt(fontAt(cur) - 1);
+    if(e === cur) break;
+    prev = cur; cur = e;
+  }
+  const used = Math.max(prev, cur);   // 값이 두 수 사이를 오갈 때는 넉넉한 쪽으로
+  let rowPx = (g.avail / units(used)) * 96/25.4;
+  // 줄 높이를 정하는 건 그 줄에서 가장 큰 글자 — 대상자 이름(기본 글자 + 1px)이다.
+  // 줄 높이의 약 72%를 글자에, 나머지를 위아래 여백에 준다.
+  let fn = Math.max(11, Math.min(18, (rowPx * 0.72) / 1.3));
+  const pv = Math.max(1.8, Math.min(8, (rowPx - fn*1.3 - 1) / 2));   // 남는 높이는 위아래 여백으로
+  // 글자 크기가 위·아래 한계에 걸리면 줄 높이가 더는 조절되지 않으므로, 실제 높이로 한 번 더 확인한다
+  const rowH = fn*1.3 + 2*pv + 1;
+  const naturalPx = (rowsPerPage + g.headEq) * rowH + used * fn * 1.3;
+  const availPx = g.avail * 96/25.4;
+  return { rowPx, fn, pv, fits: (rowPx >= PR_MINROW_PX - 0.01) && (naturalPx <= availPx) };
+}
+function listFontVars(view, rowsPerPage, cols){
+  const g = PR_GEO[view];
+  if(!g || !rowsPerPage) return '';
+  const m = listMetrics(view, rowsPerPage, cols);
+  const fn = m.fn, f = fn - 1;
+  const fh = Math.max(9.5, f - 0.6);                                 // 머리글
+  return `--prf:${f.toFixed(1)}px;--prfn:${fn.toFixed(1)}px;--prfh:${fh.toFixed(1)}px;--prp:${m.pv.toFixed(1)}px`;
+}
+/* 명단이 한 쪽에 안 들어가면 쪽 수를 하나씩 늘린다 */
+function listPageCount(view, list, start, segCols){
+  let pages = Math.max(1, start);
+  for(let guard=0; guard<20; guard++){
+    const segs = (view==='pray') ? splitEven(list.length, pages) : splitStatus(list.length, pages);
+    const ok = segs.every(([a,b], pi)=>{
+      const seg = list.slice(a,b);
+      const rows = (view==='pray') ? Math.ceil(seg.length/2)
+                                   : seg.length + ((pi===pages-1)?3:0);
+      return !rows || listMetrics(view, rows, segCols(seg)).fits;
+    });
+    if(ok) return pages;
+    pages++;
+  }
+  return pages;
+}
 /* 전도현황 쪽 나눔 — 합계 3줄은 마지막 쪽에만 붙으므로 그만큼 사람을 덜 넣어 줄 높이를 고르게 */
 function splitStatus(n, pages){
   if(pages <= 1) return splitEven(n, pages);
@@ -1557,27 +1658,29 @@ function statusBlock(arr, startNo, withSum, fullList, photo){
   body += '</tbody>';
   return `<table class="pr statuspr"><colgroup>${cols}</colgroup>${head}${body}</table>`;
 }
-const STATUS_PER_PAGE = 24;   // A4 가로 한 쪽 (합계 3줄은 마지막 쪽에서 뺌)
-const STATUS_DENSE_FROM = 14; // 이보다 줄이 많으면 글자·여백을 줄인다
-const STATUS_FILL_FROM = 15;  // 이보다 줄이 많으면 쪽을 꽉 채운다
+const STATUS_PER_PAGE = 30;   // A4 가로 한 쪽 (합계 3줄은 마지막 쪽에서 뺌)
+const STATUS_FILL_FROM = 12;  // 이보다 줄이 많으면 쪽을 꽉 채운다
 function buildStatusPrint(paginate){
   const list = enrolledTargets();
   const n = list.length;
   if(!paginate){
     return prTitle('전도 현황') + statusBlock(list, 1, true, list, true);
   }
-  if(n <= STATUS_PER_PAGE - 3){
-    return pageWrap(prTitle('전도 현황') + statusBlock(list, 1, true, list), true, n > STATUS_DENSE_FROM, n >= STATUS_FILL_FROM);
+  // 쪽 수 — 인원뿐 아니라 '관계'가 길어 두 줄이 되는 칸까지 셈에 넣는다
+  const pages = listPageCount('status', list, Math.ceil(n / STATUS_PER_PAGE), seg=> [seg]);
+  if(pages <= 1){
+    const fit = n >= STATUS_FILL_FROM;
+    return pageWrap(prTitle('전도 현황') + statusBlock(list, 1, true, list), true, false,
+                    fit, fit ? listFontVars('status', n + 3, [list]) : '');
   }
-  let pages = 1;
-  while(n > pages*STATUS_PER_PAGE - 3) pages++;
   let h = '';
   splitStatus(n, pages).forEach(([a,b], pi)=>{
     const isLast = (pi === pages-1);
+    const seg = list.slice(a,b);
     let p = prTitle('전도 현황', `총 ${n}명 · ${pi+1} / ${pages}`);
-    p += statusBlock(list.slice(a,b), a+1, isLast, list);
+    p += statusBlock(seg, a+1, isLast, list);
     // 여러 쪽으로 나뉠 때는 모든 쪽을 꽉 채운다 — 아래 여백이 남지 않도록
-    h += pageWrap(p, isLast, (b-a) > STATUS_DENSE_FROM, true);
+    h += pageWrap(p, isLast, false, true, listFontVars('status', (b-a) + (isLast?3:0), [seg]));
   });
   return h;
 }
@@ -1601,8 +1704,7 @@ function praySplit(seg, startNo){
   const half = Math.ceil(seg.length/2);
   return `<div class="pr-split"><div>${prayBlock(seg.slice(0,half), startNo)}</div><div>${prayBlock(seg.slice(half), startNo+half)}</div></div>`;
 }
-const PRAY_PER_PAGE = 70;     // 2단 × 35줄
-const PRAY_DENSE_FROM = 28;   // 한 단에 이보다 많으면 글자·여백을 줄인다
+const PRAY_PER_PAGE = 80;     // 2단 × 40줄
 const PRAY_FILL_FROM = 40;    // 한 쪽에 이보다 많으면 줄을 늘려 쪽을 꽉 채운다
 function buildPrayPrint(paginate){
   const list = prayTargets();
@@ -1610,17 +1712,23 @@ function buildPrayPrint(paginate){
   if(!paginate){
     return prTitle('기도 명단', `총 ${n}명`) + praySplit(list, 1);
   }
-  if(n <= PRAY_PER_PAGE){
-    return pageWrap(prTitle('기도 명단', `총 ${n}명`) + praySplit(list, 1), true, Math.ceil(n/2) > PRAY_DENSE_FROM, n >= PRAY_FILL_FROM);
+  // 쪽 수 — 인원뿐 아니라 '관계'가 길어 두 줄이 되는 칸까지 셈에 넣는다
+  const prayCols = seg=>{ const h = Math.ceil(seg.length/2); return [seg.slice(0,h), seg.slice(h)]; };
+  const pages = listPageCount('pray', list, Math.ceil(n / PRAY_PER_PAGE), prayCols);
+  if(pages <= 1){
+    const fit = n >= PRAY_FILL_FROM;
+    const half = Math.ceil(n/2);
+    return pageWrap(prTitle('기도 명단', `총 ${n}명`) + praySplit(list, 1), true, false,
+                    fit, fit ? listFontVars('pray', half, [list.slice(0,half), list.slice(half)]) : '');
   }
-  const pages = Math.max(1, Math.ceil(n / PRAY_PER_PAGE));
   let h = '';
   splitEven(n, pages).forEach(([a,b], pi)=>{
     const isLast = (pi === pages-1);
+    const seg = list.slice(a,b), half = Math.ceil(seg.length/2);
     let p = prTitle('기도 명단', `총 ${n}명 · ${pi+1} / ${pages}`);
-    p += praySplit(list.slice(a,b), a+1);
+    p += praySplit(seg, a+1);
     // 여러 쪽으로 나뉠 때는 모든 쪽을 꽉 채운다 — 아래 여백이 남지 않도록
-    h += pageWrap(p, isLast, Math.ceil((b-a)/2) > PRAY_DENSE_FROM, true);
+    h += pageWrap(p, isLast, false, true, listFontVars('pray', half, [seg.slice(0,half), seg.slice(half)]));
   });
   return h;
 }
@@ -1749,7 +1857,11 @@ function printCSS(orient){
     .pr-page { break-inside:auto; }
     .pr-page.pbreak { page-break-after:always; break-after:page; }
     .pr-page + .pr-page { padding-top:2mm; }
-    table.pr.praypr th, table.pr.praypr td { padding:4px 4px; }
+    /* 명단 표는 쪽마다 계산된 글자 크기를 따른다 (없으면 아래 기본값) */
+    table.pr.praypr th, table.pr.praypr td,
+    table.pr.statuspr th, table.pr.statuspr td { font-size:var(--prf,12px); padding:var(--prp,4px) 4px; line-height:1.3; }
+    table.pr.praypr thead th, table.pr.statuspr thead th { font-size:var(--prfh,11.5px); padding:var(--prp,4px) 4px; }
+    table.pr.praypr td.nm, table.pr.statuspr td.nm { font-size:var(--prfn,13px); }
     .pr-dense .pr-title { font-size:19px; }
     .pr-dense .pr-sub { font-size:11.5px; }
     .pr-dense .pr-rule { margin:0 0 8px; }
