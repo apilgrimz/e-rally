@@ -394,7 +394,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.10.13-52';
+const APP_VERSION = '2026.10.19-53';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -1498,14 +1498,35 @@ function splitEven(n, pages){
   return out;
 }
 function pageWrap(html, isLast, dense, fit){ return `<div class="pr-page${isLast?'':' pbreak'}${dense?' pr-dense':''}${fit?' pr-fit':''}">${html}</div>`; }
+/* 전도현황 쪽 나눔 — 합계 3줄은 마지막 쪽에만 붙으므로 그만큼 사람을 덜 넣어 줄 높이를 고르게 */
+function splitStatus(n, pages){
+  if(pages <= 1) return splitEven(n, pages);
+  const SUM = 3, units = n + SUM;
+  const base = Math.floor(units/pages), rem = units % pages;
+  const cnt = [];
+  for(let p=0; p<pages; p++) cnt.push(base + (p<rem?1:0));
+  cnt[pages-1] -= SUM;
+  let guard = 0;
+  while(cnt[pages-1] < 1 && guard++ < 500){      // 마지막 쪽이 비지 않도록 앞쪽에서 한 명씩 넘김
+    const src = cnt.findIndex((c,i)=> i<pages-1 && c>1);
+    if(src < 0) break;
+    cnt[src]--; cnt[pages-1]++;
+  }
+  const out = []; let i = 0;
+  cnt.forEach(c=>{ out.push([i, i+c]); i += c; });
+  return out;
+}
 
 /* ----- 전도현황 (가로) ----- */
-function statusBlock(arr, startNo, withSum, fullList){
+function statusBlock(arr, startNo, withSum, fullList, photo){
   const days = DB.settings.days;
   const zoneSpans = computeSpans(arr, t=> zoneDisplay(t));
   const leaderSpans = computeSpans(arr, t=> zoneDisplay(t)+'||'+t.leader);
-  let cols = `<col style="width:4%"><col style="width:7%"><col style="width:8%"><col style="width:15%"><col style="width:8%">`;
-  const dayW = (58/Math.max(1,days.length)).toFixed(2);
+  // 사진은 글자를 키우므로 ○ 칸을 조금 줄이고 글자 칸(관계·대상자)에 그만큼 더 준다
+  let cols = photo
+    ? `<col style="width:3.2%"><col style="width:6.8%"><col style="width:8%"><col style="width:18%"><col style="width:9%">`
+    : `<col style="width:4%"><col style="width:7%"><col style="width:8%"><col style="width:15%"><col style="width:8%">`;
+  const dayW = ((photo?55:58)/Math.max(1,days.length)).toFixed(2);
   days.forEach(()=> cols += `<col style="width:${dayW/2}%"><col style="width:${dayW/2}%">`);
   let head = `<thead><tr><th rowspan="2">번호</th><th rowspan="2">구역</th><th rowspan="2">인도자</th><th rowspan="2">관계</th><th rowspan="2">대상자</th>`;
   days.forEach(d=> head += `<th colspan="2">${esc(d.label)}</th>`);
@@ -1543,7 +1564,7 @@ function buildStatusPrint(paginate){
   const list = enrolledTargets();
   const n = list.length;
   if(!paginate){
-    return prTitle('전도 현황') + statusBlock(list, 1, true, list);
+    return prTitle('전도 현황') + statusBlock(list, 1, true, list, true);
   }
   if(n <= STATUS_PER_PAGE - 3){
     return pageWrap(prTitle('전도 현황') + statusBlock(list, 1, true, list), true, n > STATUS_DENSE_FROM, n >= STATUS_FILL_FROM);
@@ -1551,11 +1572,12 @@ function buildStatusPrint(paginate){
   let pages = 1;
   while(n > pages*STATUS_PER_PAGE - 3) pages++;
   let h = '';
-  splitEven(n, pages).forEach(([a,b], pi)=>{
+  splitStatus(n, pages).forEach(([a,b], pi)=>{
     const isLast = (pi === pages-1);
     let p = prTitle('전도 현황', `총 ${n}명 · ${pi+1} / ${pages}`);
     p += statusBlock(list.slice(a,b), a+1, isLast, list);
-    h += pageWrap(p, isLast, (b-a) > STATUS_DENSE_FROM, (b-a) >= STATUS_FILL_FROM);
+    // 여러 쪽으로 나뉠 때는 모든 쪽을 꽉 채운다 — 아래 여백이 남지 않도록
+    h += pageWrap(p, isLast, (b-a) > STATUS_DENSE_FROM, true);
   });
   return h;
 }
@@ -1597,7 +1619,8 @@ function buildPrayPrint(paginate){
     const isLast = (pi === pages-1);
     let p = prTitle('기도 명단', `총 ${n}명 · ${pi+1} / ${pages}`);
     p += praySplit(list.slice(a,b), a+1);
-    h += pageWrap(p, isLast, Math.ceil((b-a)/2) > PRAY_DENSE_FROM, (b-a) >= PRAY_FILL_FROM);
+    // 여러 쪽으로 나뉠 때는 모든 쪽을 꽉 채운다 — 아래 여백이 남지 않도록
+    h += pageWrap(p, isLast, Math.ceil((b-a)/2) > PRAY_DENSE_FROM, true);
   });
   return h;
 }
@@ -1775,6 +1798,7 @@ function doPrint(view){
     @page { size:A4 ${orient}; margin:${marginMM}mm; }
     @media print {
       .pr-page { box-sizing:border-box; }
+      .pr-page + .pr-page { padding-top:0; }   /* 인쇄는 쪽마다 새 용지 — 위 여백을 두지 않는다 */
       .pr-page.pr-fit { height:${printableH}mm; display:flex; flex-direction:column; }
       .pr-page.pr-fit > .pr-split { flex:1 1 auto; align-items:stretch; }
       .pr-page.pr-fit > .pr-split > div { display:flex; flex-direction:column; }
@@ -1902,6 +1926,10 @@ async function exportImage(view){
     table.pr .dupname{font-weight:800;color:#1d4ed8}
     table.pr.praypr{table-layout:auto}
     table.pr.praypr td.rel,table.pr.praypr td.ld,table.pr.praypr td.nm{white-space:nowrap}
+    table.pr.statuspr th,table.pr.statuspr td{font-size:22px;padding:11px 5px}
+    table.pr.statuspr thead th{font-size:20px;padding:13px 5px}
+    table.pr.statuspr td.nm{font-size:23px}
+    table.pr.statuspr td.ld,table.pr.statuspr td.nm{white-space:nowrap}
     table.pr.planpr{table-layout:auto;width:auto;min-width:100%}
     table.pr.planpr td.pc-cat,table.pr.planpr td.pc-lbl{white-space:nowrap;word-break:keep-all;width:1px;padding-left:13px;padding-right:13px}
     table.pr td.lb{background:#f4f6fb;font-weight:800;color:#2b3660}
