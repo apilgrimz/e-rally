@@ -394,7 +394,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.11.18-57';
+const APP_VERSION = '2026.11.18-58';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -1416,6 +1416,7 @@ function ocrMergeGroups(m, sx0, sx1, bandsS){
 /* 인식된 줄들을 행에 배치한다. 합쳐진 칸의 글자는 그 칸이 덮는 모든 행에 똑같이 넣는다. */
 function ocrAssign(lines, sc, y0, bands, grp){
   const cells = new Array(bands.length).fill('');
+  const conf  = new Array(bands.length).fill(0);
   (lines||[]).forEach(ln=>{
     const txt = String(ln.text||'').replace(/\s+/g,' ').trim();
     if(!txt || !ln.bbox) return;
@@ -1424,16 +1425,26 @@ function ocrAssign(lines, sc, y0, bands, grp){
     for(let i=0;i<bands.length;i++) if(yc >= bands[i][0] && yc < bands[i][1]){ bi = i; break; }
     if(bi < 0) return;
     cells[bi] = cells[bi] ? (cells[bi]+' '+txt) : txt;
+    conf[bi] = Math.max(conf[bi], +ln.confidence || 0);
   });
   if(grp && grp.length === bands.length){
     const byGrp = {};
     cells.forEach((c,i)=>{ if(c) byGrp[grp[i]] = byGrp[grp[i]] ? (byGrp[grp[i]]+' '+c) : c; });
     for(let i=0;i<cells.length;i++) if(byGrp[grp[i]]) cells[i] = byGrp[grp[i]];
   }
+  cells.conf = conf;
   return cells;
 }
 /* 칸이 '순수한 번호'인 비율 — 번호(구분) 칸을 가려내려는 것.
    '11구역'처럼 숫자가 섞인 글자는 번호로 보지 않는다. */
+/* 그 칸에 글자가 들어 있는지 — 빈 칸을 굳이 읽어 엉뚱한 글자가 나오는 것을 막는다 */
+function ocrCellInk(m, sx0, sx1, b0, b1){
+  const a = Math.max(0, Math.round(sx0)+1), b = Math.min(m.w, Math.round(sx1)-1);
+  const y0 = Math.max(0, Math.round(b0)+1), y1 = Math.min(m.h, Math.round(b1)-1);
+  let n = 0, t = 0;
+  for(let y=y0; y<y1; y++) for(let x=a; x<b; x++){ t++; if(m.ink[y*m.w+x]) n++; }
+  return t ? n/t : 0;
+}
 function ocrDigitRatio(cells){
   const v = (cells||[]).map(c=> String(c||'').replace(/[\s.,)|·]/g,'')).filter(Boolean);
   if(!v.length) return 0;
@@ -1564,7 +1575,7 @@ async function ocrRosterFromImage(file, prog){
                                               cTop, cBot, rowH);
       prog(`글자 읽는 중… ${i+1} / ${spans.length}`);
       const { data } = await worker.recognize(cc);
-      cols.push({ cells: ocrAssign(data.lines||[], sc, cTop, bands, grp) });
+      cols.push({ idx:i, cells: ocrAssign(data.lines||[], sc, cTop, bands, grp) });
     }
     // 번호(구분) 칸은 거의 숫자 — 그 칸을 경계로 표를 끊는다 (한 장에 표가 좌우 둘로 나뉜 경우)
     const useful = cols.filter(c=> c.cells.some(x=> x && x.trim()));
@@ -1572,6 +1583,30 @@ async function ocrRosterFromImage(file, prog){
     const groups = []; let cur = [];
     useful.forEach(c=>{ if(isNo(c)){ if(cur.length) groups.push(cur); cur = []; } else cur.push(c); });
     if(cur.length) groups.push(cur);
+
+    // 대상자 이름은 가장 중요하므로 한 칸씩 따로 다시 읽는다.
+    // 열을 통째로 읽으면 가끔 한 글자를 놓치는데('손순금'→'손순급'), 한 줄 모드로 칸마다 읽으면 정확하다.
+    await worker.setParameters({ tessedit_pageseg_mode: '7' });
+    const nameCols = groups.map(g=> g[g.length-1]).filter(Boolean);
+    let nd = 0;
+    const nTotal = nameCols.length * bands.length;
+    for(const nc of nameCols){
+      const sp2 = spans[nc.idx];
+      for(let r=0;r<bands.length;r++){
+        if(++nd % 6 === 0) prog(`이름 다시 읽는 중… ${nd} / ${nTotal}`);
+        if(ocrCellInk(m, sp2[0], sp2[1], bandsS[r][0], bandsS[r][1]) < 0.012) continue;  // 빈 칸은 건너뛴다
+        const ph = (bands[r][1]-bands[r][0]) * 0.12;      // 위아래를 조금 줄여 칸선을 피한다
+        const { canvas:cc } = ocrCropColumn(canvas, sp2[0]*k + inset, sp2[1]*k - inset,
+                                            bands[r][0]+ph, bands[r][1]-ph, rowH);
+        const { data } = await worker.recognize(cc);
+        const t = fixOcrWord(String(data.text||'').replace(/\s+/g,' ').trim());
+        if(!/[가-힣]{2,}/.test(t)) continue;              // 한글 두 자 이상일 때만 믿는다
+        const was = String(nc.cells[r]||'').trim();
+        const oldConf = (nc.cells.conf && nc.cells.conf[r]) || 0;
+        // 열 통째로 읽은 것과 다르면, 글자인식이 더 자신 있어 하는 쪽을 쓴다
+        if(!was || t === was || (+data.confidence||0) >= oldConf) nc.cells[r] = t;
+      }
+    }
 
     for(const grp of groups){
       const K = grp.length;
