@@ -394,7 +394,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.11.18-59';
+const APP_VERSION = '2026.11.18-60';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -1560,6 +1560,7 @@ async function ocrRosterFromImage(file, prog){
   await ocrLoadLib();
   const worker = await Tesseract.createWorker('kor', 1, { langPath: OCR_LANG, gzip: true });
   const outLines = [];
+  let shakyNames = [];
   try {
     await worker.setParameters({ tessedit_pageseg_mode: '6' });
     const bands = bandsS.map(([a,b])=> [a*k, b*k]);
@@ -1594,31 +1595,40 @@ async function ocrRosterFromImage(file, prog){
     const nTotal = nameCols.length * bands.length;
     for(const nc of nameCols){
       const sp2 = spans[nc.idx];
+      // 이름다운 글자만 받아들인다 — 표 아래 얼룩 따위를 읽어 엉뚱한 줄이 생기지 않도록
+      const ok = s=> /[가-힣]{2,}/.test(s) && s.length <= 12 && (s.match(/[0-9]/g)||[]).length < 2;
+      const readCell = async (r, scaleRow)=>{
+        const ph = (bands[r][1]-bands[r][0]) * 0.12;      // 위아래를 조금 줄여 칸선을 피한다
+        const { canvas:cc } = ocrCropColumn(canvas, sp2[0]*k + inset, sp2[1]*k - inset,
+                                            bands[r][0]+ph, bands[r][1]-ph, scaleRow);
+        const d = (await worker.recognize(cc)).data;
+        return { t: fixOcrWord(String(d.text||'').replace(/\s+/g,' ').trim()), c:+d.confidence || 0 };
+      };
       for(let r=0;r<bands.length;r++){
         if(++nd % 6 === 0) prog(`이름 다시 읽는 중… ${nd} / ${nTotal}`);
         if(ocrCellInk(m, sp2[0], sp2[1], bandsS[r][0], bandsS[r][1]) < 0.012) continue;  // 빈 칸은 건너뛴다
-        const ph = (bands[r][1]-bands[r][0]) * 0.12;      // 위아래를 조금 줄여 칸선을 피한다
-        const { canvas:cc } = ocrCropColumn(canvas, sp2[0]*k + inset, sp2[1]*k - inset,
-                                            bands[r][0]+ph, bands[r][1]-ph, rowH);
-        const { data } = await worker.recognize(cc);
-        const t = fixOcrWord(String(data.text||'').replace(/\s+/g,' ').trim());
-        // 이름다운 글자만 받아들인다 — 표 아래 얼룩 따위를 읽어 엉뚱한 줄이 생기지 않도록
-        const ok = s=> /[가-힣]{2,}/.test(s) && s.length <= 12 && (s.match(/[0-9]/g)||[]).length < 2;
-        const was = String((nc.raw && nc.raw[r]) || '').trim();
         const cand = [];
+        const was = String((nc.raw && nc.raw[r]) || '').trim();
         if(ok(was)) cand.push({ t:fixOcrWord(was), c:(nc.raw.conf && nc.raw.conf[r]) || 0 });
-        if(ok(t))   cand.push({ t, c:+data.confidence || 0 });
-        if(!cand.length) continue;
-        // 결과가 갈리거나 하나뿐이면 한 번 더, 다른 크기로 읽어 가장 자신 있어 하는 것을 고른다
+        const a = await readCell(r, rowH);
+        if(ok(a.t)) cand.push(a);
+        // 두 결과가 갈리면 크기를 달리해 두 번 더 읽는다. 사람·기기마다 글자가 미세하게 달라 보이므로
+        // 여러 번 읽어 많이 나온 쪽을 쓰는 것이 한 번 읽고 믿는 것보다 안전하다.
+        let unsure = false;
         if(cand.length < 2 || cand[0].t !== cand[1].t){
-          const { canvas:c2 } = ocrCropColumn(canvas, sp2[0]*k + inset, sp2[1]*k - inset,
-                                              bands[r][0]+ph, bands[r][1]-ph, rowH*0.62);
-          const d2 = (await worker.recognize(c2)).data;
-          const t2 = fixOcrWord(String(d2.text||'').replace(/\s+/g,' ').trim());
-          if(ok(t2)) cand.push({ t:t2, c:+d2.confidence || 0 });
+          unsure = true;
+          for(const s of [rowH*0.62, rowH*1.7]){
+            const b = await readCell(r, s);
+            if(ok(b.t)) cand.push(b);
+          }
         }
-        cand.sort((a,b)=> b.c - a.c);
-        nc.cells[r] = cand[0].t;
+        if(!cand.length) continue;
+        // 글자인식이 가장 자신 있어 하는 것을 고른다 (여러 번 읽어 본 것 중에서)
+        const tally = {};
+        cand.forEach(x=>{ const v = tally[x.t] || (tally[x.t] = { t:x.t, c:0 }); v.c = Math.max(v.c, x.c); });
+        const best = cand.slice().sort((p,q)=> q.c - p.c)[0];
+        nc.cells[r] = best.t;
+        if(unsure && Object.keys(tally).length > 1) shakyNames.push(best.t);   // 읽을 때마다 달라진 이름
       }
     }
 
@@ -1648,7 +1658,7 @@ async function ocrRosterFromImage(file, prog){
   } finally { try{ await worker.terminate(); }catch(e){} }
 
   if(!outLines.length) throw new Error('이름을 하나도 읽지 못했어요. 사진이 흐리거나 표가 기울지 않았는지 보아 주세요.');
-  return outLines.join('\n');
+  return { text: outLines.join('\n'), shaky: shakyNames };
 }
 function rosterDupCount(rows){
   return rows.filter(r=> DB.targets.some(x=> sameTarget(x, { name:r.name, zone:r.zone, church:r.church }))).length;
@@ -1712,10 +1722,16 @@ function openImportSheet(){
       if(!f) return;
       const prog = (s)=>{ btn.disabled = true; btn.textContent = s; };
       try {
-        const text = await ocrRosterFromImage(f, prog);
+        const res = await ocrRosterFromImage(f, prog);
+        const text = (res && res.text) || '';
         if(ta){
           ta.value = ta.value.trim() ? (ta.value.replace(/\s*$/,'') + '\n' + text) : text;
           recount();
+          const sh = (res && res.shaky) || [];
+          if(sh.length && info){
+            info.innerHTML += `<br><span style="color:var(--gold-soft)">읽을 때마다 달라진 이름 ${sh.length}곳`
+              + ` — <b>${esc(sh.slice(0,6).join(', '))}</b>${sh.length>6?' 외':''} 은 꼭 확인해 주세요</span>`;
+          }
         }
         toast('읽었습니다 · 틀린 글자를 고친 뒤 등록하세요');
       } catch(e){
