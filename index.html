@@ -394,7 +394,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.10.19-54';
+const APP_VERSION = '2026.11.18-55';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -1151,11 +1151,28 @@ $('#sheetSave').onclick = ()=>{ if(sheetCtx && sheetCtx.save) sheetCtx.save(); }
 /* ===== 명단 붙여넣기 가져오기 =====
    한 줄에 한 사람: 구역, 인도자, 관계, 대상자 [, 교회명(타교회일 때)]
    쉼표 또는 탭(엑셀 복사) 구분. 맨 앞 번호는 무시. */
+/* 글자인식(OCR)이 자주 틀리는 글자를 바로잡는다 — 이름 뒤 B/S 가 8/5 로 읽히는 경우 */
+function fixOcrWord(s){
+  let t = String(s||'').trim();
+  t = t.replace(/^[^가-힣A-Za-z0-9]+|[^가-힣A-Za-z0-9)]+$/g, '');   // 앞뒤 찌꺼기 기호
+  if(/^[가-힣]{2,4}8$/.test(t)) t = t.slice(0,-1) + 'B';
+  if(/^[가-힣]{2,4}5$/.test(t)) t = t.slice(0,-1) + 'S';
+  return t;
+}
+function looksZone(s){
+  const t = String(s||'').trim();
+  if(!t) return false;
+  if(/구역$/.test(t)) return true;
+  if(t === EXT_ZONE || /교회/.test(t)) return true;
+  return (DB.settings.zones||[]).indexOf(t) >= 0;
+}
 function parseRosterText(text){
   const out = [];
+  let lastZone = '', lastLeader = '';       // 표에서 합쳐진 칸(구역·인도자)은 비워 두고 윗줄을 따른다
   String(text||'').split(/\r?\n/).forEach(line=>{
     const t = line.trim();
     if(!t) return;
+    if(/^(구분|번호|구역|인도자|관계|인도대상자|대상자|비고)[\s|]*$/.test(t)) return;   // 표 머리글 줄
     let f;
     if(t.indexOf('\t')>=0)      f = t.split('\t');          // 엑셀 복사
     else if(t.indexOf(',')>=0)  f = t.split(',');            // 쉼표
@@ -1164,21 +1181,331 @@ function parseRosterText(text){
       // 한 칸 띄어쓰기: 구역 / 인도자 / (가운데 전부)관계 / 대상자
       let w = t.split(/\s+/);
       if(w.length >= 5 && /^\d+$/.test(w[0])) w = w.slice(1);   // 표의 번호 무시
-      if(w.length < 4) return;
-      f = [w[0], w[1], w.slice(2, w.length-1).join(' '), w[w.length-1]];
+      if(w.length < 4){
+        f = w;                                                   // 칸이 모자라면 아래에서 윗줄을 따른다
+      } else {
+        f = [w[0], w[1], w.slice(2, w.length-1).join(' '), w[w.length-1]];
+      }
     }
-    f = f.map(x=> String(x).trim());
+    f = f.map(x=> String(x).trim()).filter((x,i,a)=> x !== '' || i < a.length-1);
     if(f.length >= 5 && /^\d+$/.test(f[0])) f = f.slice(1);
-    if(f.length < 4) return;
+    if(f.length && /^\d+[.)]?$/.test(f[0])) f = f.slice(1);      // 맨 앞 구분 번호
+    if(!f.length) return;
+    // "12구역 지민경S  전 직장동료  박근희" — 앞칸만 한 칸으로 띄운 경우 구역과 인도자를 갈라 준다
+    if(f.length === 3 && /\s/.test(f[0])){
+      const w = f[0].split(/\s+/);
+      if(w.length === 2 && looksZone(w[0])) f = [w[0], w[1], f[1], f[2]];
+    }
+
+    let zone, leader, relation, name, note = '';
+    if(f.length >= 4){
+      zone = f[0]; leader = f[1]; relation = f[2]; name = f[3]; note = f[4] || '';
+    } else if(f.length === 3){
+      // 구역 관계 대상자  /  인도자 관계 대상자  — 첫 칸 모양으로 가린다
+      if(looksZone(f[0])){ zone = f[0]; leader = lastLeader; }
+      else { zone = lastZone; leader = f[0]; }
+      relation = f[1]; name = f[2];
+    } else if(f.length === 2){
+      zone = lastZone; leader = lastLeader; relation = f[0]; name = f[1];
+    } else {
+      return;
+    }
+    leader = fixOcrWord(leader);
+    name   = fixOcrWord(name);
     // 타교회는 "타교회/은혜교회" 처럼 구역 칸에 교회명을 붙여 적는다
-    let zone = f[0]||'', church = '';
-    const m = zone.match(/^([^\/／]+)[\/／](.+)$/);
+    let church = '';
+    const m = String(zone||'').match(/^([^\/／]+)[\/／](.+)$/);
     if(m){ zone = m[1].trim(); church = m[2].trim(); }
-    const leader = f[1]||'', relation = f[2]||'', name = f[3]||'', note = f[4]||'';
+    if(zone) lastZone = zone;
+    if(leader) lastLeader = leader;
     if(!name) return;
     out.push({ zone, leader, relation, name, note, church });
   });
   return out;
+}
+/* ───────── 사진에서 명단 읽기 ─────────
+   표 테두리를 지우지 않고, 칸 사이 빈 띠(거터)로 열을 나눈 뒤
+   열마다 따로 글자를 인식한다. (굵은 이름 글씨가 뭉개지지 않는 방법) */
+const OCR_LIB  = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+const OCR_LANG = 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/kor@1.0.0/4.0.0_best_int';
+const OCR_MAXW = 2400;      // 분석에 쓸 최대 가로 픽셀
+const OCR_SMALLW = 760;     // 구조(선·거터) 찾기용 축소 폭
+
+function ocrDrawToCanvas(img, angleDeg){
+  const scale = Math.min(1, OCR_MAXW / img.width);
+  const w = Math.round(img.width*scale), h = Math.round(img.height*scale);
+  const c = document.createElement('canvas');
+  if(!angleDeg){ c.width = w; c.height = h; const x = c.getContext('2d');
+    x.fillStyle='#fff'; x.fillRect(0,0,w,h); x.drawImage(img,0,0,w,h); return c; }
+  const a = angleDeg*Math.PI/180, co = Math.abs(Math.cos(a)), si = Math.abs(Math.sin(a));
+  c.width = Math.round(w*co + h*si); c.height = Math.round(w*si + h*co);
+  const x = c.getContext('2d');
+  x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height);
+  x.translate(c.width/2, c.height/2); x.rotate(a); x.drawImage(img, -w/2, -h/2, w, h);
+  return c;
+}
+/* 캔버스를 작게 줄여 흑백 1/0 배열로 — 배경보다 뚜렷하게 어두운 곳이 글자·선 */
+function ocrInkMap(canvas, targetW){
+  const s = Math.min(1, targetW / canvas.width);
+  const w = Math.max(1, Math.round(canvas.width*s)), h = Math.max(1, Math.round(canvas.height*s));
+  const c = document.createElement('canvas'); c.width=w; c.height=h;
+  const x = c.getContext('2d'); x.drawImage(canvas, 0,0, w,h);
+  const d = x.getImageData(0,0,w,h).data;
+  const g = new Float32Array(w*h);
+  for(let i=0,p=0;i<g.length;i++,p+=4) g[i] = 0.299*d[p] + 0.587*d[p+1] + 0.114*d[p+2];
+  // 배경 = 큰 상자 블러 (가로·세로 따로 = 빠름)
+  const r = Math.max(4, Math.round(Math.min(w,h)/28));
+  const t1 = new Float32Array(w*h), bg = new Float32Array(w*h);
+  for(let y=0;y<h;y++){ let sum=0, n=0;
+    for(let i=0;i<=r && i<w;i++){ sum+=g[y*w+i]; n++; }
+    for(let xx=0;xx<w;xx++){
+      t1[y*w+xx] = sum/n;
+      const add = xx+r+1, rem = xx-r;
+      if(add<w){ sum+=g[y*w+add]; n++; }
+      if(rem>=0){ sum-=g[y*w+rem]; n--; }
+    } }
+  for(let xx=0;xx<w;xx++){ let sum=0, n=0;
+    for(let i=0;i<=r && i<h;i++){ sum+=t1[i*w+xx]; n++; }
+    for(let y=0;y<h;y++){
+      bg[y*w+xx] = sum/n;
+      const add = y+r+1, rem = y-r;
+      if(add<h){ sum+=t1[add*w+xx]; n++; }
+      if(rem>=0){ sum-=t1[rem*w+xx]; n--; }
+    } }
+  const ink = new Uint8Array(w*h);
+  for(let i=0;i<ink.length;i++) ink[i] = (g[i] < bg[i]-18) ? 1 : 0;
+  return { ink, w, h };
+}
+/* 가로줄 잉크량의 들쭉날쭉함이 가장 큰 각도가 수평이 맞은 각도 */
+function ocrEstimateSkew(img){
+  let best = -1, bestA = 0;
+  for(let a=-3; a<=3.0001; a+=0.25){
+    const m = ocrInkMap(ocrDrawToCanvas(img, a), 420);
+    let prev = 0, score = 0;
+    for(let y=0;y<m.h;y++){
+      let s=0; const o=y*m.w;
+      for(let x=0;x<m.w;x++) s+=m.ink[o+x];
+      const d = s-prev; score += d*d; prev = s;
+    }
+    if(score > best){ best = score; bestA = a; }
+  }
+  return Math.abs(bestA) < 0.3 ? 0 : bestA;
+}
+function ocrRuns(flags, minLen){
+  const out=[]; let s=null;
+  for(let i=0;i<flags.length;i++){
+    if(flags[i] && s===null) s=i;
+    else if(!flags[i] && s!==null){ if(i-s>=minLen) out.push([s,i]); s=null; }
+  }
+  if(s!==null && flags.length-s>=minLen) out.push([s,flags.length]);
+  return out;
+}
+/* 표의 가로 칸선 — 폭의 절반 넘게 이어지는 어두운 줄 */
+function ocrRowLines(m){
+  const sums = new Float32Array(m.h);
+  for(let y=0;y<m.h;y++){ let s=0; const o=y*m.w;
+    for(let x=0;x<m.w;x++) s+=m.ink[o+x];
+    sums[y] = s/m.w; }
+  // 칸선이 흐린 사진도 있어 문턱을 낮춰 가며 가장 고른 간격이 나오는 쪽을 고른다
+  let best = null;
+  for(const thr of [0.40, 0.50, 0.30, 0.25]){
+    const L = ocrRuns(Array.from(sums, v=> v>thr), 1).map(([a,b])=> (a+b)/2);
+    if(L.length < 4) continue;
+    const g = []; for(let i=1;i<L.length;i++) g.push(L[i]-L[i-1]);
+    const med = g.slice().sort((a,b)=>a-b)[Math.floor(g.length/2)];
+    const ok = g.filter(x=> Math.abs(x-med) < med*0.3).length / g.length;   // 고른 간격의 비율
+    if(!best || ok > best.ok + 0.05 || (Math.abs(ok-best.ok) <= 0.05 && L.length > best.L.length)) best = { L, ok };
+  }
+  return best ? best.L : [];
+}
+/* 표의 세로 칸선으로 열을 나눈다. 표 높이를 거의 다 지나는 선만 칸선으로 본다. */
+function ocrColumnSpans(m, y0, y1){
+  const hh = Math.max(1, y1-y0);
+  const cov = new Float32Array(m.w);
+  for(let x=0;x<m.w;x++){ let s=0;
+    for(let y=y0;y<y1;y++) s+=m.ink[y*m.w+x];
+    cov[x] = s/hh; }
+  let bounds = [];
+  for(const thr of [0.70, 0.55, 0.45]){
+    const runs = ocrRuns(Array.from(cov, c=> c>=thr), 1);
+    if(runs.length >= 3){ bounds = runs.map(r=> (r[0]+r[1])/2); break; }
+  }
+  // 표의 바깥 테두리가 흐려 안 잡히면 글자가 있는 범위를 바깥 경계로 삼는다
+  let xMin = m.w, xMax = 0;
+  for(let x=0;x<m.w;x++) if(cov[x] > 0.02){ if(x<xMin) xMin=x; if(x>xMax) xMax=x; }
+  if(!bounds.length) return { spans: [], bounds };
+  if(bounds[0] - xMin > m.w*0.015) bounds.unshift(xMin);
+  if(xMax - bounds[bounds.length-1] > m.w*0.015) bounds.push(xMax);
+  const spans = [];
+  for(let i=0;i+1<bounds.length;i++){
+    const a = bounds[i], b = bounds[i+1];
+    if(b-a >= m.w*0.012) spans.push([a,b]);
+  }
+  return { spans, bounds };
+}
+function ocrLoadLib(){
+  if(window.Tesseract) return Promise.resolve();
+  return new Promise((res, rej)=>{
+    const s = document.createElement('script');
+    s.src = OCR_LIB; s.async = true;
+    s.onload = ()=> window.Tesseract ? res() : rej(new Error('lib'));
+    s.onerror = ()=> rej(new Error('net'));
+    document.head.appendChild(s);
+  });
+}
+function ocrLoadImage(file){
+  return new Promise((res, rej)=>{
+    const url = URL.createObjectURL(file);
+    const im = new Image();
+    im.onload = ()=>{ URL.revokeObjectURL(url); res(im); };
+    im.onerror = ()=>{ URL.revokeObjectURL(url); rej(new Error('img')); };
+    im.src = url;
+  });
+}
+/* 열 하나를 잘라 키운 캔버스 — 글자가 넉넉히 커야 굵은 이름도 정확히 읽힌다 */
+function ocrCropColumn(canvas, x0, x1, y0, y1, rowH){
+  const sc = Math.max(1, Math.min(4, 150 / Math.max(8, rowH)));
+  const w = Math.max(1, Math.round((x1-x0)*sc)), h = Math.max(1, Math.round((y1-y0)*sc));
+  const c = document.createElement('canvas'); c.width=w; c.height=h;
+  const x = c.getContext('2d');
+  x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
+  x.fillStyle='#fff'; x.fillRect(0,0,w,h);
+  x.drawImage(canvas, x0,y0, x1-x0, y1-y0, 0,0, w,h);
+  return { canvas:c, sc };
+}
+/* 이 열에서 가로 칸선이 실제로 그어져 있는지 본다. 선이 없으면 위아래 줄이 합쳐진 한 칸이다.
+   (합쳐진 칸은 글자가 가운데에 찍히므로, 글자 위치만으로는 어느 줄까지인지 알 수 없다) */
+function ocrMergeGroups(m, sx0, sx1, bandsS){
+  const a = Math.max(0, Math.round(sx0)+1), b = Math.min(m.w, Math.round(sx1)-1);
+  const w = Math.max(1, b-a);
+  const grp = [0];
+  for(let i=1;i<bandsS.length;i++){
+    const y = Math.round(bandsS[i][0]);
+    let best = 0;
+    for(let yy=Math.max(0,y-1); yy<=Math.min(m.h-1,y+1); yy++){
+      let c = 0;
+      for(let x=a;x<b;x++) c += m.ink[yy*m.w+x];
+      if(c > best) best = c;
+    }
+    grp.push(grp[i-1] + (best >= w*0.55 ? 1 : 0));   // 선이 있으면 새 칸, 없으면 윗칸과 한 몸
+  }
+  return grp;
+}
+/* 인식된 줄들을 행에 배치한다. 합쳐진 칸의 글자는 그 칸이 덮는 모든 행에 똑같이 넣는다. */
+function ocrAssign(lines, sc, y0, bands, grp){
+  const cells = new Array(bands.length).fill('');
+  (lines||[]).forEach(ln=>{
+    const txt = String(ln.text||'').replace(/\s+/g,' ').trim();
+    if(!txt || !ln.bbox) return;
+    const yc = y0 + ((ln.bbox.y0 + ln.bbox.y1)/2) / sc;
+    let bi = -1;
+    for(let i=0;i<bands.length;i++) if(yc >= bands[i][0] && yc < bands[i][1]){ bi = i; break; }
+    if(bi < 0) return;
+    cells[bi] = cells[bi] ? (cells[bi]+' '+txt) : txt;
+  });
+  if(grp && grp.length === bands.length){
+    const byGrp = {};
+    cells.forEach((c,i)=>{ if(c) byGrp[grp[i]] = byGrp[grp[i]] ? (byGrp[grp[i]]+' '+c) : c; });
+    for(let i=0;i<cells.length;i++) if(byGrp[grp[i]]) cells[i] = byGrp[grp[i]];
+  }
+  return cells;
+}
+/* 칸이 '순수한 번호'인 비율 — 번호(구분) 칸을 가려내려는 것.
+   '11구역'처럼 숫자가 섞인 글자는 번호로 보지 않는다. */
+function ocrDigitRatio(cells){
+  const v = (cells||[]).map(c=> String(c||'').replace(/[\s.,)|·]/g,'')).filter(Boolean);
+  if(!v.length) return 0;
+  return v.filter(x=> /^\d{1,3}$/.test(x)).length / v.length;
+}
+/* 인식 찌꺼기 기호를 털어내고, 이름 뒤 B/S 가 8/5 로 읽힌 것도 되돌린다 */
+function ocrClean(s){
+  return String(s||'').replace(/[|_'"`~^]+/g,' ')
+                      .replace(/[。·.,]+/g,' ')
+                      .replace(/([가-힣])5(?=[가-힣])/g,'$1S')
+                      .replace(/([가-힣])8(?=[가-힣])/g,'$1B')
+                      .replace(/\s{2,}/g,' ').trim();
+}
+/* 사진 한 장 → 붙여넣기 칸에 넣을 "구역 인도자 관계 대상자" 여러 줄 */
+async function ocrRosterFromImage(file, prog){
+  prog('사진 준비 중…');
+  const img = await ocrLoadImage(file);
+  prog('기울기 바로잡는 중…');
+  const ang = ocrEstimateSkew(img);
+  const canvas = ocrDrawToCanvas(img, ang);
+  const m = ocrInkMap(canvas, OCR_SMALLW);
+  const k = canvas.width / m.w;                 // 축소본 → 원본 배율
+
+  const rows = ocrRowLines(m);
+  if(rows.length < 4) throw new Error('표의 칸선을 찾지 못했어요. 표 전체가 반듯하게 들어가도록 다시 찍어 주세요.');
+  // 가장 흔한 간격이 사람 한 줄. 그 정수배에 가까운 칸은 그만큼 쪼개고(칸선이 흐려 빠진 곳),
+  // 어중간한 칸(제목줄 등)은 버린다.
+  const gaps = []; for(let i=1;i<rows.length;i++) gaps.push(rows[i]-rows[i-1]);
+  const med = gaps.slice().sort((a,b)=>a-b)[Math.floor(gaps.length/2)];
+  const bandsS = [];
+  for(let i=1;i<rows.length;i++){
+    const a = rows[i-1], g = rows[i]-a, n = Math.round(g/med);
+    if(n >= 1 && n <= 4 && Math.abs(g - n*med) < med*0.35){
+      for(let j=0;j<n;j++) bandsS.push([a + g*j/n, a + g*(j+1)/n]);
+    }
+  }
+  if(bandsS.length < 3) throw new Error('표의 줄을 알아보지 못했어요. 조금 더 밝고 반듯하게 찍어 주세요.');
+  // 맨 아랫줄의 칸선이 흐려 빠지는 일이 잦아, 한 줄 몫을 덧붙여 둔다 (비어 있으면 그냥 넘어간다)
+  const tail = bandsS[bandsS.length-1][1];
+  if(tail + med <= m.h) bandsS.push([tail, tail + med]);
+  const yTopS = bandsS[0][0], yBotS = bandsS[bandsS.length-1][1];
+
+  const { spans } = ocrColumnSpans(m, Math.round(yTopS), Math.round(yBotS));
+  if(spans.length < 3) throw new Error('표의 칸을 나누지 못했어요. 표만 가득 차게 다시 찍어 주세요.');
+
+  prog('글자 인식 준비 중… (처음 한 번만 내려받습니다)');
+  await ocrLoadLib();
+  const worker = await Tesseract.createWorker('kor', 1, { langPath: OCR_LANG, gzip: true });
+  const outLines = [];
+  try {
+    await worker.setParameters({ tessedit_pageseg_mode: '6' });
+    const bands = bandsS.map(([a,b])=> [a*k, b*k]);
+    const rowH  = bands[0][1]-bands[0][0];
+    const y0 = yTopS*k, y1 = yBotS*k;
+    const inset = Math.max(1, m.w*0.003) * k;        // 칸선이 안 들어오게 좌우를 살짝 줄여 자른다
+    const cols = [];
+    for(let i=0;i<spans.length;i++){
+      // 아래위로 반 줄씩 넉넉히 잘라 맨 끝 줄이 잘려 나가지 않게 한다
+      const cTop = Math.max(0, y0 - rowH*0.5), cBot = Math.min(canvas.height, y1 + rowH*0.6);
+      const { canvas:cc, sc } = ocrCropColumn(canvas, spans[i][0]*k + inset, spans[i][1]*k - inset, cTop, cBot, rowH);
+      prog(`글자 읽는 중… ${i+1} / ${spans.length}`);
+      const { data } = await worker.recognize(cc);
+      const grp = ocrMergeGroups(m, spans[i][0], spans[i][1], bandsS);
+      cols.push({ cells: ocrAssign(data.lines||[], sc, cTop, bands, grp) });
+    }
+    // 번호(구분) 칸은 거의 숫자 — 그 칸을 경계로 표를 끊는다 (한 장에 표가 좌우 둘로 나뉜 경우)
+    const useful = cols.filter(c=> c.cells.some(x=> x && x.trim()));
+    const isNo = c=> ocrDigitRatio(c.cells) > 0.35 || /^(구분|번호|No\.?)$/i.test((c.cells[0]||'').trim());
+    const groups = []; let cur = [];
+    useful.forEach(c=>{ if(isNo(c)){ if(cur.length) groups.push(cur); cur = []; } else cur.push(c); });
+    if(cur.length) groups.push(cur);
+
+    for(const grp of groups){
+      const K = grp.length;
+      if(K < 2) continue;
+      const at = back => (K < back) ? [] : grp[K-back].cells;
+      const nameC = at(1), relC = at(2), leadC = at(3), zoneC = at(4);
+      const isHead = s=> /^(인도대상자|대상자|이름|관계|인도자|구역|구분|비고)$/.test(String(s||'').trim());
+      for(let r=0;r<bands.length;r++){
+        let nm = fixOcrWord(nameC[r]||'');
+        const rel = ocrClean(relC[r]), lead = fixOcrWord(leadC[r]||'');
+        if(isHead(nm) || isHead(rel)) continue;              // 표 머리글 줄
+        // 이름만 못 읽은 줄은 버리지 않고 ? 로 남긴다 — 사람이 통째로 빠지지 않도록
+        if(!nm) nm = (rel || lead) ? '?' : '';
+        if(!nm) continue;
+        const cells = [ ocrClean(zoneC[r]), lead, rel, nm ];
+        while(cells.length > 2 && !cells[0]) cells.shift();     // 앞의 빈 칸은 윗줄을 따르게 둔다
+        outLines.push(cells.join('  '));
+      }
+    }
+  } finally { try{ await worker.terminate(); }catch(e){} }
+
+  if(!outLines.length) throw new Error('이름을 하나도 읽지 못했어요. 사진이 흐리거나 표가 기울지 않았는지 보아 주세요.');
+  return outLines.join('\n');
 }
 function rosterDupCount(rows){
   return rows.filter(r=> DB.targets.some(x=> sameTarget(x, { name:r.name, zone:r.zone, church:r.church }))).length;
@@ -1203,7 +1530,14 @@ function openImportSheet(){
       (비고는 없어도 됩니다 · 맨 앞 번호는 무시합니다)<br>
       <span style="color:var(--gold-soft)">전 직장동료</span>처럼 <b>칸 안에 띄어쓰기</b>가 있으면 칸 사이를 <b>두 칸</b> 띄우거나 쉼표로 나누세요.
       엑셀에서 복사한 것도 그대로 됩니다.<br>
-      타교회는 구역 칸에 <b>타교회/은혜교회</b> 처럼 적습니다.
+      타교회는 구역 칸에 <b>타교회/은혜교회</b> 처럼 적습니다.<br>
+      구역·인도자가 <b>윗줄과 같으면 비워 두어도</b> 됩니다. (표에서 칸이 합쳐진 경우)
+    </div>
+    <button class="btn btn-secondary btn-block" id="imp-photo">📷 사진에서 불러오기</button>
+    <input type="file" id="imp-file" accept="image/*" style="display:none">
+    <div class="muted" style="margin:6px 0 12px; line-height:1.6">
+      표가 <b>반듯하고 가득 차게</b> 찍힌 사진일수록 잘 읽습니다. 읽은 내용은 아래 칸에 들어오니
+      <b>틀린 글자를 고친 뒤</b> 등록하세요. (처음 한 번은 인식 기능을 내려받느라 인터넷이 필요합니다)
     </div>
     <div class="field"><textarea id="imp-text" rows="10" placeholder="11구역 조성영B 지인 김진우&#10;11구역 김세동B 아버지 김병대&#10;12구역 지민경S  전 직장동료  박근희"></textarea></div>
     <div class="muted" id="imp-info">붙여넣으면 여기에 인식 결과가 표시됩니다.</div>`;
@@ -1215,12 +1549,42 @@ function openImportSheet(){
     toast(`${r.added}명 추가${r.skipped?` · 이미 있는 ${r.skipped}명 건너뜀`:''}`);
   }, { saveLabel:'등록' });
   const ta = $('#imp-text'), info = $('#imp-info');
-  if(ta && info){
-    ta.oninput = ()=>{
-      const rows = parseRosterText(ta.value);
-      if(!rows.length){ info.textContent = '읽을 수 있는 줄이 없습니다.'; return; }
-      const dup = rosterDupCount(rows);
-      info.innerHTML = `<b>${rows.length}명</b> 인식` + (dup?` · 이미 있는 <b>${dup}명</b>은 건너뜁니다` : '');
+  const recount = ()=>{
+    if(!ta || !info) return;
+    const rows = parseRosterText(ta.value);
+    const unread = (ta.value.match(/\?\s*$/gm)||[]).length;
+    const tail = unread ? ` · <span style="color:var(--gold-soft)">이름을 못 읽은 ${unread}줄(?)</span>은 고쳐 주세요` : '';
+    if(!rows.length){ info.innerHTML = '읽을 수 있는 줄이 없습니다.' + tail; return; }
+    const dup = rosterDupCount(rows);
+    info.innerHTML = `<b>${rows.length}명</b> 인식`
+      + (dup?` · 이미 있는 <b>${dup}명</b>은 건너뜁니다` : '') + tail;
+  };
+  if(ta && info) ta.oninput = recount;
+  const btn = $('#imp-photo'), fi = $('#imp-file');
+  if(btn && fi){
+    btn.onclick = ()=> fi.click();
+    fi.onchange = async ()=>{
+      const f = fi.files && fi.files[0];
+      fi.value = '';
+      if(!f) return;
+      const prog = (s)=>{ btn.disabled = true; btn.textContent = s; };
+      try {
+        const text = await ocrRosterFromImage(f, prog);
+        if(ta){
+          ta.value = ta.value.trim() ? (ta.value.replace(/\s*$/,'') + '\n' + text) : text;
+          recount();
+        }
+        toast('읽었습니다 · 틀린 글자를 고친 뒤 등록하세요');
+      } catch(e){
+        const msg = (e && e.message === 'net')
+          ? '글자 인식 기능을 내려받지 못했어요. 인터넷에 연결한 뒤 다시 해 주세요.'
+          : (e && e.message === 'img') ? '사진을 열지 못했어요.'
+          : (e && e.message) ? e.message : '사진에서 글자를 읽지 못했어요.';
+        if(info) info.innerHTML = `<span style="color:var(--danger)">${esc(msg)}</span>`;
+        toast('사진을 읽지 못했어요');
+      } finally {
+        btn.disabled = false; btn.textContent = '📷 사진에서 불러오기';
+      }
     };
   }
 }
