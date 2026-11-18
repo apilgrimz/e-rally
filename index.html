@@ -394,7 +394,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.11.18-58';
+const APP_VERSION = '2026.11.18-59';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -1155,7 +1155,7 @@ $('#sheetSave').onclick = ()=>{ if(sheetCtx && sheetCtx.save) sheetCtx.save(); }
 function fixOcrWord(s){
   let t = String(s||'').trim();
   t = t.replace(/^[^가-힣A-Za-z0-9]+|[^가-힣A-Za-z0-9)]+$/g, '');   // 앞뒤 찌꺼기 기호
-  if(/^[가-힣]{2,4}8$/.test(t)) t = t.slice(0,-1) + 'B';
+  if(/^[가-힣]{2,4}[86]$/.test(t)) t = t.slice(0,-1) + 'B';   // B 가 8·6 으로 읽히는 일이 잦다
   if(/^[가-힣]{2,4}5$/.test(t)) t = t.slice(0,-1) + 'S';
   return t;
 }
@@ -1575,7 +1575,9 @@ async function ocrRosterFromImage(file, prog){
                                               cTop, cBot, rowH);
       prog(`글자 읽는 중… ${i+1} / ${spans.length}`);
       const { data } = await worker.recognize(cc);
-      cols.push({ idx:i, cells: ocrAssign(data.lines||[], sc, cTop, bands, grp) });
+      // raw = 합쳐진 칸 처리를 하지 않은 것. 대상자 이름 칸은 절대 합쳐지지 않으므로 이쪽을 쓴다.
+      cols.push({ idx:i, cells: ocrAssign(data.lines||[], sc, cTop, bands, grp),
+                         raw:   ocrAssign(data.lines||[], sc, cTop, bands, null) });
     }
     // 번호(구분) 칸은 거의 숫자 — 그 칸을 경계로 표를 끊는다 (한 장에 표가 좌우 둘로 나뉜 경우)
     const useful = cols.filter(c=> c.cells.some(x=> x && x.trim()));
@@ -1600,11 +1602,23 @@ async function ocrRosterFromImage(file, prog){
                                             bands[r][0]+ph, bands[r][1]-ph, rowH);
         const { data } = await worker.recognize(cc);
         const t = fixOcrWord(String(data.text||'').replace(/\s+/g,' ').trim());
-        if(!/[가-힣]{2,}/.test(t)) continue;              // 한글 두 자 이상일 때만 믿는다
-        const was = String(nc.cells[r]||'').trim();
-        const oldConf = (nc.cells.conf && nc.cells.conf[r]) || 0;
-        // 열 통째로 읽은 것과 다르면, 글자인식이 더 자신 있어 하는 쪽을 쓴다
-        if(!was || t === was || (+data.confidence||0) >= oldConf) nc.cells[r] = t;
+        // 이름다운 글자만 받아들인다 — 표 아래 얼룩 따위를 읽어 엉뚱한 줄이 생기지 않도록
+        const ok = s=> /[가-힣]{2,}/.test(s) && s.length <= 12 && (s.match(/[0-9]/g)||[]).length < 2;
+        const was = String((nc.raw && nc.raw[r]) || '').trim();
+        const cand = [];
+        if(ok(was)) cand.push({ t:fixOcrWord(was), c:(nc.raw.conf && nc.raw.conf[r]) || 0 });
+        if(ok(t))   cand.push({ t, c:+data.confidence || 0 });
+        if(!cand.length) continue;
+        // 결과가 갈리거나 하나뿐이면 한 번 더, 다른 크기로 읽어 가장 자신 있어 하는 것을 고른다
+        if(cand.length < 2 || cand[0].t !== cand[1].t){
+          const { canvas:c2 } = ocrCropColumn(canvas, sp2[0]*k + inset, sp2[1]*k - inset,
+                                              bands[r][0]+ph, bands[r][1]-ph, rowH*0.62);
+          const d2 = (await worker.recognize(c2)).data;
+          const t2 = fixOcrWord(String(d2.text||'').replace(/\s+/g,' ').trim());
+          if(ok(t2)) cand.push({ t:t2, c:+d2.confidence || 0 });
+        }
+        cand.sort((a,b)=> b.c - a.c);
+        nc.cells[r] = cand[0].t;
       }
     }
 
@@ -1621,8 +1635,10 @@ async function ocrRosterFromImage(file, prog){
         const rw = ocrClean(relC[r]).split(' ').filter(Boolean);
         const rel = rw.map(w=> snapRelation(rw.length > 1 ? fixChWord(w) : w)).join(' ');
         if(isHead(nm) || isHead(rel)) continue;              // 표 머리글 줄
-        // 이름만 못 읽은 줄은 버리지 않고 ? 로 남긴다 — 사람이 통째로 빠지지 않도록
-        if(!nm) nm = (rel || lead) ? '?' : '';
+        // 이름만 못 읽은 줄은 버리지 않고 ? 로 남긴다 — 사람이 통째로 빠지지 않도록.
+        // 다만 관계 칸까지 알아볼 수 없는 글자면 표 바깥을 잘못 읽은 것이니 버린다.
+        const relOk = /[가-힣]{2}/.test(rel) && rel.length <= 14;
+        if(!nm) nm = (relOk || /^[가-힣]{2,4}[BS]?$/.test(lead)) ? '?' : '';
         if(!nm) continue;
         const cells = [ ocrClean(zoneC[r]), lead, rel, nm ];
         while(cells.length > 2 && !cells[0]) cells.shift();     // 앞의 빈 칸은 윗줄을 따르게 둔다
