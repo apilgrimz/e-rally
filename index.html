@@ -394,7 +394,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.11.18-56';
+const APP_VERSION = '2026.11.18-57';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -1471,6 +1471,15 @@ const REL_COMMON = ['지인','친구','조카','아버지','어머니','아버�
   '성도','이웃','선배','후배','제자','스승','동창','친척','교우','사장님','사모님','집사님','권사님',
   '어르신','할머니','할아버지','목자','구역장','큰어머니','큰아버지','외숙모','형수','제수','매형','매제','형부',
   '처남','처제','처형','시누이','올케','자매님','형제님','직장상사','후임','동료','선생님'];
+/* '해운대CH 이나영S친구'처럼 교회 약자 CH 가 한글에 붙어 있으면 '다1' '대!' '애' 따위로 잘못 읽힌다.
+   낱말이 둘 이상인 관계에서, 한글 뒤에 그런 꼬리가 붙은 낱말만 CH 로 되돌린다.
+   (지인·조카 같은 한 낱말짜리 관계는 손대지 않는다) */
+function fixChWord(w){
+  const t = String(w||'');
+  if(/CH/.test(t)) return t;
+  const m = t.match(/^([가-힣]{2,})(?:다|대|애|아|어|따|타)[1!lI|｜]?$/);
+  return m ? m[1] + 'CH' : t;
+}
 /* 관계 칸은 늘 쓰는 말이 정해져 있다 — 아주 비슷하면 그 말로 맞춰 준다 (이름에는 절대 쓰지 않는다) */
 function snapRelation(s){
   const t = String(s||'').trim();
@@ -1574,7 +1583,8 @@ async function ocrRosterFromImage(file, prog){
         let nm = fixOcrWord(nameC[r]||'');
         const lead = fixOcrWord(leadC[r]||'');
         // 관계는 늘 쓰는 말로 바로잡되, 여러 낱말이면 낱말마다 따로 본다 ('해운대CH 이나영S친구')
-        const rel = ocrClean(relC[r]).split(' ').map(w=> snapRelation(w)).join(' ');
+        const rw = ocrClean(relC[r]).split(' ').filter(Boolean);
+        const rel = rw.map(w=> snapRelation(rw.length > 1 ? fixChWord(w) : w)).join(' ');
         if(isHead(nm) || isHead(rel)) continue;              // 표 머리글 줄
         // 이름만 못 읽은 줄은 버리지 않고 ? 로 남긴다 — 사람이 통째로 빠지지 않도록
         if(!nm) nm = (rel || lead) ? '?' : '';
