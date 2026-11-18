@@ -394,7 +394,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.11.18-55';
+const APP_VERSION = '2026.11.18-56';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -1309,14 +1309,15 @@ function ocrRowLines(m){
   // 칸선이 흐린 사진도 있어 문턱을 낮춰 가며 가장 고른 간격이 나오는 쪽을 고른다
   let best = null;
   for(const thr of [0.40, 0.50, 0.30, 0.25]){
-    const L = ocrRuns(Array.from(sums, v=> v>thr), 1).map(([a,b])=> (a+b)/2);
+    const R = ocrRuns(Array.from(sums, v=> v>thr), 1);
+    const L = R.map(([a,b])=> (a+b)/2);
     if(L.length < 4) continue;
     const g = []; for(let i=1;i<L.length;i++) g.push(L[i]-L[i-1]);
     const med = g.slice().sort((a,b)=>a-b)[Math.floor(g.length/2)];
     const ok = g.filter(x=> Math.abs(x-med) < med*0.3).length / g.length;   // 고른 간격의 비율
-    if(!best || ok > best.ok + 0.05 || (Math.abs(ok-best.ok) <= 0.05 && L.length > best.L.length)) best = { L, ok };
+    if(!best || ok > best.ok + 0.05 || (Math.abs(ok-best.ok) <= 0.05 && L.length > best.L.length)) best = { L, R, ok };
   }
-  return best ? best.L : [];
+  return best ? { lines: best.L, runs: best.R } : { lines: [], runs: [] };
 }
 /* 표의 세로 칸선으로 열을 나눈다. 표 높이를 거의 다 지나는 선만 칸선으로 본다. */
 function ocrColumnSpans(m, y0, y1){
@@ -1362,15 +1363,35 @@ function ocrLoadImage(file){
     im.src = url;
   });
 }
-/* 열 하나를 잘라 키운 캔버스 — 글자가 넉넉히 커야 굵은 이름도 정확히 읽힌다 */
+/* 열 하나를 잘라 키운 캔버스 — 글자가 넉넉히 커야 굵은 이름도 정확히 읽힌다.
+   가로 칸선은 흰색으로 덮는다. 작은 사진에서는 칸선이 글자에 바짝 붙어
+   'ㅡ' '느' 같은 글자로 잘못 읽히기 때문이다. */
 function ocrCropColumn(canvas, x0, x1, y0, y1, rowH){
-  const sc = Math.max(1, Math.min(4, 150 / Math.max(8, rowH)));
+  // 줄 높이가 150px쯤 되게 한 번에 키운다. 작게 찍힌 사진일수록 많이 키워야 글자가 살아난다.
+  const sc = Math.max(1, Math.min(10, 150 / Math.max(8, rowH)));
   const w = Math.max(1, Math.round((x1-x0)*sc)), h = Math.max(1, Math.round((y1-y0)*sc));
   const c = document.createElement('canvas'); c.width=w; c.height=h;
   const x = c.getContext('2d');
   x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
   x.fillStyle='#fff'; x.fillRect(0,0,w,h);
   x.drawImage(canvas, x0,y0, x1-x0, y1-y0, 0,0, w,h);
+  // 잘라낸 그림에서 가로 칸선을 직접 찾아 흰색으로 덮는다.
+  // (글자는 칸을 가로로 꽉 채우지 않으므로, 가로로 거의 다 어두운 줄은 칸선이다.
+  //  칸선을 남겨 두면 작은 사진에서 'ㅡ' '느' 같은 글자로 잘못 읽힌다)
+  try {
+    const px = x.getImageData(0,0,w,h).data;
+    const step = w > 400 ? 2 : 1, cnt = Math.ceil(w/step);
+    const hit = [];
+    for(let yy=0; yy<h; yy++){
+      let d = 0; const o = yy*w*4;
+      for(let xx=0; xx<w; xx+=step){
+        const i = o + xx*4;
+        if(px[i]*0.299 + px[i+1]*0.587 + px[i+2]*0.114 < 150) d++;
+      }
+      if(d > cnt*0.7) hit.push(yy);
+    }
+    hit.forEach(yy=> x.fillRect(0, yy-2, w, 5));
+  } catch(e){}
   return { canvas:c, sc };
 }
 /* 이 열에서 가로 칸선이 실제로 그어져 있는지 본다. 선이 없으면 위아래 줄이 합쳐진 한 칸이다.
@@ -1378,17 +1399,18 @@ function ocrCropColumn(canvas, x0, x1, y0, y1, rowH){
 function ocrMergeGroups(m, sx0, sx1, bandsS){
   const a = Math.max(0, Math.round(sx0)+1), b = Math.min(m.w, Math.round(sx1)-1);
   const w = Math.max(1, b-a);
-  const grp = [0];
-  for(let i=1;i<bandsS.length;i++){
-    const y = Math.round(bandsS[i][0]);
+  const drawn = y=>{                       // 이 열에서 그 높이에 칸선이 그어져 있는가
     let best = 0;
     for(let yy=Math.max(0,y-1); yy<=Math.min(m.h-1,y+1); yy++){
       let c = 0;
       for(let x=a;x<b;x++) c += m.ink[yy*m.w+x];
       if(c > best) best = c;
     }
-    grp.push(grp[i-1] + (best >= w*0.55 ? 1 : 0));   // 선이 있으면 새 칸, 없으면 윗칸과 한 몸
-  }
+    return best >= w*0.55;
+  };
+  const grp = [0];
+  for(let i=1;i<bandsS.length;i++)
+    grp.push(grp[i-1] + (drawn(Math.round(bandsS[i][0])) ? 1 : 0));   // 선이 있으면 새 칸, 없으면 윗칸과 한 몸
   return grp;
 }
 /* 인식된 줄들을 행에 배치한다. 합쳐진 칸의 글자는 그 칸이 덮는 모든 행에 똑같이 넣는다. */
@@ -1417,13 +1439,69 @@ function ocrDigitRatio(cells){
   if(!v.length) return 0;
   return v.filter(x=> /^\d{1,3}$/.test(x)).length / v.length;
 }
+/* 한글을 자모로 풀어 쓴다 — 비슷하게 생긴 글자끼리 견주기 위함 ('시연'과 '지인'은 자모로는 두 곳만 다름) */
+function hangulJamo(s){
+  let out = '';
+  for(const ch of String(s||'')){
+    const c = ch.charCodeAt(0);
+    if(c >= 0xAC00 && c <= 0xD7A3){
+      const i = c - 0xAC00;
+      out += String.fromCharCode(0x1100 + Math.floor(i/588))
+           + String.fromCharCode(0x1161 + Math.floor((i%588)/28));
+      const t = i % 28; if(t) out += String.fromCharCode(0x11A7 + t);
+    } else out += ch;
+  }
+  return out;
+}
+function editDist(a, b){
+  const n = a.length, m = b.length;
+  if(!n) return m; if(!m) return n;
+  let prev = Array.from({length:m+1}, (_,j)=> j);
+  for(let i=1;i<=n;i++){
+    const cur = [i];
+    for(let j=1;j<=m;j++)
+      cur[j] = Math.min(prev[j]+1, cur[j-1]+1, prev[j-1] + (a[i-1]===b[j-1]?0:1));
+    prev = cur;
+  }
+  return prev[m];
+}
+const REL_COMMON = ['지인','친구','조카','아버지','어머니','아버님','어머님','배우자','남편','아내',
+  '아들','딸','형','누나','오빠','언니','동생','이모','이모부','고모','고모부','삼촌','외삼촌',
+  '사촌','조카딸','손자','손녀','며느리','사위','직장동료','전직장동료','민원인','고객님','손님',
+  '성도','이웃','선배','후배','제자','스승','동창','친척','교우','사장님','사모님','집사님','권사님',
+  '어르신','할머니','할아버지','목자','구역장','큰어머니','큰아버지','외숙모','형수','제수','매형','매제','형부',
+  '처남','처제','처형','시누이','올케','자매님','형제님','직장상사','후임','동료','선생님'];
+/* 관계 칸은 늘 쓰는 말이 정해져 있다 — 아주 비슷하면 그 말로 맞춰 준다 (이름에는 절대 쓰지 않는다) */
+function snapRelation(s){
+  const t = String(s||'').trim();
+  if(!t || t.length < 2 || t.length > 10) return t;
+  const vocab = REL_COMMON.concat((DB.targets||[]).map(x=> String(x.relation||'').trim()).filter(v=> v.length>=2));
+  if(vocab.indexOf(t) >= 0) return t;
+  const ja = hangulJamo(t);
+  let best = '', bd = 99, bl = 0;
+  vocab.forEach(v=>{
+    const jv = hangulJamo(v);
+    if(Math.abs(jv.length - ja.length) > 2) return;        // 길이가 많이 다르면 다른 말이다
+    const d = editDist(ja, jv);
+    if(d < bd){ bd = d; best = v; bl = jv.length; }
+  });
+  if(!best) return t;
+  // 짧은 말은 자모 하나, 긴 말은 둘까지만 고친다.
+  // 잘못 고친 말은 눈에 띄지 않아 그대로 등록되므로, 못 고치고 남기는 쪽이 안전하다.
+  const lim = bl <= 6 ? 1 : 2;
+  return bd <= lim ? best : t;
+}
 /* 인식 찌꺼기 기호를 털어내고, 이름 뒤 B/S 가 8/5 로 읽힌 것도 되돌린다 */
 function ocrClean(s){
   return String(s||'').replace(/[|_'"`~^]+/g,' ')
                       .replace(/[。·.,]+/g,' ')
                       .replace(/([가-힣])5(?=[가-힣])/g,'$1S')
                       .replace(/([가-힣])8(?=[가-힣])/g,'$1B')
-                      .replace(/\s{2,}/g,' ').trim();
+                      .split(/\s+/)
+                      // 홀로 남은 자모(ㅡ ㄴ ㆍ)나 기호 덩어리는 칸선을 글자로 잘못 본 찌꺼기다
+                      .filter(w=> w && !/^[ㄱ-ㆎᄀ-ᇿ]+$/.test(w)
+                                    && /[가-힣A-Za-z0-9]/.test(w))
+                      .join(' ').trim();
 }
 /* 사진 한 장 → 붙여넣기 칸에 넣을 "구역 인도자 관계 대상자" 여러 줄 */
 async function ocrRosterFromImage(file, prog){
@@ -1435,7 +1513,8 @@ async function ocrRosterFromImage(file, prog){
   const m = ocrInkMap(canvas, OCR_SMALLW);
   const k = canvas.width / m.w;                 // 축소본 → 원본 배율
 
-  const rows = ocrRowLines(m);
+  const rowInfo = ocrRowLines(m);
+  const rows = rowInfo.lines;
   if(rows.length < 4) throw new Error('표의 칸선을 찾지 못했어요. 표 전체가 반듯하게 들어가도록 다시 찍어 주세요.');
   // 가장 흔한 간격이 사람 한 줄. 그 정수배에 가까운 칸은 그만큼 쪼개고(칸선이 흐려 빠진 곳),
   // 어중간한 칸(제목줄 등)은 버린다.
@@ -1471,10 +1550,11 @@ async function ocrRosterFromImage(file, prog){
     for(let i=0;i<spans.length;i++){
       // 아래위로 반 줄씩 넉넉히 잘라 맨 끝 줄이 잘려 나가지 않게 한다
       const cTop = Math.max(0, y0 - rowH*0.5), cBot = Math.min(canvas.height, y1 + rowH*0.6);
-      const { canvas:cc, sc } = ocrCropColumn(canvas, spans[i][0]*k + inset, spans[i][1]*k - inset, cTop, cBot, rowH);
+      const grp = ocrMergeGroups(m, spans[i][0], spans[i][1], bandsS);
+      const { canvas:cc, sc } = ocrCropColumn(canvas, spans[i][0]*k + inset, spans[i][1]*k - inset,
+                                              cTop, cBot, rowH);
       prog(`글자 읽는 중… ${i+1} / ${spans.length}`);
       const { data } = await worker.recognize(cc);
-      const grp = ocrMergeGroups(m, spans[i][0], spans[i][1], bandsS);
       cols.push({ cells: ocrAssign(data.lines||[], sc, cTop, bands, grp) });
     }
     // 번호(구분) 칸은 거의 숫자 — 그 칸을 경계로 표를 끊는다 (한 장에 표가 좌우 둘로 나뉜 경우)
@@ -1492,7 +1572,9 @@ async function ocrRosterFromImage(file, prog){
       const isHead = s=> /^(인도대상자|대상자|이름|관계|인도자|구역|구분|비고)$/.test(String(s||'').trim());
       for(let r=0;r<bands.length;r++){
         let nm = fixOcrWord(nameC[r]||'');
-        const rel = ocrClean(relC[r]), lead = fixOcrWord(leadC[r]||'');
+        const lead = fixOcrWord(leadC[r]||'');
+        // 관계는 늘 쓰는 말로 바로잡되, 여러 낱말이면 낱말마다 따로 본다 ('해운대CH 이나영S친구')
+        const rel = ocrClean(relC[r]).split(' ').map(w=> snapRelation(w)).join(' ');
         if(isHead(nm) || isHead(rel)) continue;              // 표 머리글 줄
         // 이름만 못 읽은 줄은 버리지 않고 ? 로 남긴다 — 사람이 통째로 빠지지 않도록
         if(!nm) nm = (rel || lead) ? '?' : '';
