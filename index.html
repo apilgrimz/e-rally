@@ -394,7 +394,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.11.18-60';
+const APP_VERSION = '2026.11.19-61';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -1494,7 +1494,7 @@ function fixChWord(w){
 /* 관계 칸은 늘 쓰는 말이 정해져 있다 — 아주 비슷하면 그 말로 맞춰 준다 (이름에는 절대 쓰지 않는다) */
 function snapRelation(s){
   const t = String(s||'').trim();
-  if(!t || t.length < 2 || t.length > 10) return t;
+  if(!t || t.length > 10 || !/[가-힣]/.test(t)) return t;
   const vocab = REL_COMMON.concat((DB.targets||[]).map(x=> String(x.relation||'').trim()).filter(v=> v.length>=2));
   if(vocab.indexOf(t) >= 0) return t;
   const ja = hangulJamo(t);
@@ -1506,9 +1506,10 @@ function snapRelation(s){
     if(d < bd){ bd = d; best = v; bl = jv.length; }
   });
   if(!best) return t;
-  // 짧은 말은 자모 하나, 긴 말은 둘까지만 고친다.
   // 잘못 고친 말은 눈에 띄지 않아 그대로 등록되므로, 못 고치고 남기는 쪽이 안전하다.
-  const lim = bl <= 6 ? 1 : 2;
+  // 한 글자짜리(딸·형)는 그런 관계가 몇 개 없어 둘까지 고쳐도 되지만,
+  // 두 글자(목자/손자처럼 다른 말이 많다)는 하나까지만 고친다.
+  const lim = (bl <= 4) ? 2 : (bl <= 6 ? 1 : 2);
   return bd <= lim ? best : t;
 }
 /* 인식 찌꺼기 기호를 털어내고, 이름 뒤 B/S 가 8/5 로 읽힌 것도 되돌린다 */
