@@ -64,7 +64,12 @@ select {
 html.zoomed, html.zoomed body { position:static; height:auto; min-height:100%; overflow:visible; overscroll-behavior:contain; }
 html.zoomed #app { height:auto; min-height:100%; overflow:visible; }
 html.zoomed main.content { overflow:visible; min-height:0; }
-html.zoomed .tbl-scroll, html.zoomed .pl-wrap { max-height:none !important; }
+/* 표 영역이 스스로 스크롤되면 손가락 움직임을 그쪽이 다 먹어 버려 화면이 밀리지 않는다.
+   확대 중에는 표의 스크롤을 꺼서 문서 전체가 밀리도록 한다. */
+html.zoomed .tbl-scroll, html.zoomed .pl-wrap { max-height:none !important; overflow:visible !important; }
+/* 고정 열·머리글은 표가 스스로 스크롤될 때만 쓸모가 있다. 확대 중에는 떠다니며 가리므로 멈춘다. */
+html.zoomed table.sx thead th, html.zoomed table.sx .col-no,
+html.zoomed table.sx .col-name, html.zoomed table.pl thead th { position:static !important; }
 header.topbar {
   position:relative; z-index:50; flex:0 0 auto; padding:calc(10px + var(--safe-top)) 14px 10px;
   background:linear-gradient(180deg,rgba(11,16,36,.95),rgba(11,16,36,.85));
@@ -402,7 +407,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.11.25-62';
+const APP_VERSION = '2026.11.25-63';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
