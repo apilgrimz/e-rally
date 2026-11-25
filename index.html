@@ -57,6 +57,14 @@ select {
 
 /* ============ 레이아웃 ============ */
 #app { height:100%; display:flex; flex-direction:column; overflow:hidden; }
+
+/* 손가락으로 확대(핀치 줌)했을 때는 화면 고정을 풀어 자유롭게 밀어 볼 수 있게 한다.
+   평소에는 화면이 고정되어 있어야 스크롤이 튀지 않지만, 확대한 동안에는
+   그 고정 때문에 화면이 꿈쩍하지 않아 답답하다. */
+html.zoomed, html.zoomed body { position:static; height:auto; min-height:100%; overflow:visible; overscroll-behavior:contain; }
+html.zoomed #app { height:auto; min-height:100%; overflow:visible; }
+html.zoomed main.content { overflow:visible; min-height:0; }
+html.zoomed .tbl-scroll, html.zoomed .pl-wrap { max-height:none !important; }
 header.topbar {
   position:relative; z-index:50; flex:0 0 auto; padding:calc(10px + var(--safe-top)) 14px 10px;
   background:linear-gradient(180deg,rgba(11,16,36,.95),rgba(11,16,36,.85));
@@ -394,7 +402,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.11.19-61';
+const APP_VERSION = '2026.11.25-62';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -703,6 +711,8 @@ function fitScrollers(){
     if(_lastScrollerH) $$('#view .tbl-scroll, #view .pl-wrap').forEach(el=> el.style.maxHeight = _lastScrollerH + 'px');
     return;
   }
+  // 확대 중에는 표 높이를 다시 재지 않는다 (확대 중엔 높이 제한을 아예 풀어 둔다)
+  if(document.documentElement.classList.contains('zoomed')) return;
   const z = document.documentElement.classList.contains('fs-xl') ? 1.27
           : document.documentElement.classList.contains('fs-lg') ? 1.13 : 1;
   const vb = view.getBoundingClientRect().bottom;
@@ -3229,6 +3239,44 @@ function onViewportResize(){
 }
 window.addEventListener('resize', onViewportResize);
 window.addEventListener('orientationchange', ()=> setTimeout(()=>{ _lastVH = window.innerHeight; fitScrollers(); }, 250));
+
+/* 손가락으로 확대하면 화면 고정을 풀고, 원래 크기로 돌아오면 다시 고정한다.
+   고정된 채로는 확대해도 화면을 밀 수 없어 스크롤이 안 되는 것처럼 느껴진다. */
+(function(){
+  const vv = window.visualViewport;
+  if(!vv) return;
+  let zoomed = false, timer = null, lastY = 0;
+  // 확대 중 문서를 민 위치를 기억해 둔다 (배율이 바뀌는 순간 브라우저가 0으로 되돌리기도 한다)
+  window.addEventListener('scroll', ()=>{ if(zoomed) lastY = window.scrollY || 0; }, { passive:true });
+  function apply(){
+    const sh = document.getElementById('sheet');
+    const md = document.getElementById('modal');
+    const busy = (sh && sh.classList.contains('show')) || (md && md.style.display === 'flex');
+    const want = !busy && vv.scale > 1.02;
+    if(want === zoomed) return;
+    const view = $('#view');
+    // 평소 실제로 스크롤되는 것은 표 영역(.tbl-scroll/.pl-wrap)이고, 없으면 본문이다
+    const inner = document.querySelector('#view .tbl-scroll, #view .pl-wrap') || view;
+    if(want){
+      const y = (inner ? inner.scrollTop : 0) + (view ? view.scrollTop : 0);
+      document.documentElement.classList.add('zoomed');
+      zoomed = true;
+      window.scrollTo(0, y);                 // 안쪽 스크롤 위치를 문서 스크롤로 옮긴다
+      lastY = y;
+    } else {
+      const y = Math.max(lastY, window.scrollY || 0);
+      window.scrollTo(0, 0);
+      document.documentElement.classList.remove('zoomed');
+      zoomed = false;
+      fitScrollers();                        // 표 높이를 먼저 되돌려 놓아야 스크롤이 들어간다
+      const back = document.querySelector('#view .tbl-scroll, #view .pl-wrap') || view;
+      if(back) back.scrollTop = y;           // 보던 자리로 되돌린다
+    }
+  }
+  const onChange = ()=>{ clearTimeout(timer); timer = setTimeout(apply, 80); };
+  vv.addEventListener('resize', onChange);
+  vv.addEventListener('scroll', onChange);
+})();
 
 window.addEventListener('load', ()=>{ try{ fbInit(); }catch(e){ console.error(e); } });
 window.addEventListener('online', ()=>{ if(DB.roomCode) setSyncStatus('live'); });
