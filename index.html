@@ -407,7 +407,7 @@ const $  = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const APP_VERSION = '2026.11.25-63';
+const APP_VERSION = '2026.11.27-64';
 const DEFAULT_ZONES = ['11구역','12구역','13구역','14구역','21구역','22구역','23구역','24구역','31구역','32구역','33구역','34구역','타교회'];
 const EXT_ZONE = '타교회';
 function defaultDays(){ return ['1일차(월)','2일차(화)','3일차(수)','4일차(목)','5일차(금)','6일차(토)'].map(l=>({label:l})); }
@@ -2318,8 +2318,19 @@ function buildChanGrid(forPrint){
   const totalCols = 1 + c.divisions.length + c.fixed.length;
   let cols = '';
   if(forPrint){
-    const rest = ((100-19)/Math.max(1,totalCols-1)).toFixed(2);
-    cols = `<colgroup><col style="width:19%">`+Array.from({length:totalCols-1},()=>`<col style="width:${rest}%">`).join('')+`</colgroup>`;
+    // 칸마다 들어갈 글자 길이에 맞춰 너비를 나눈다.
+    // 모두 같은 너비로 주면 '3분단 / 4분단'처럼 긴 칸이 '3층'과 같은 폭을 받아 두 줄로 접힌다.
+    const emOf = s=>{
+      const parts = String(s==null?'':s).split(/\/\//);     // // 는 줄바꿈 표시 — 가장 긴 줄만 센다
+      let m = 0; parts.forEach(x=>{ const v = textEm(x.trim()); if(v>m) m = v; });
+      return m;
+    };
+    const wd = [ Math.max(3, ...c.roles.map(r=> emOf(r.label))) ];
+    c.divisions.forEach((d,di)=> wd.push(Math.max(emOf(d), ...c.roles.map(r=> emOf((r.cells||[])[di]||'')))));
+    c.fixed.forEach(f=> wd.push(Math.max(emOf(f.label), emOf(f.value))));
+    const PAD = 1.8;                                        // 칸 좌우 여백 몫
+    const tot = wd.reduce((a,b)=> a+b+PAD, 0) || 1;
+    cols = '<colgroup>' + wd.map(x=> `<col style="width:${((x+PAD)/tot*100).toFixed(2)}%">`).join('') + '</colgroup>';
   }
   let head = `<thead><tr><th>구분</th>`;
   c.divisions.forEach(d=> head += `<th>${escBr(d)}</th>`);
